@@ -15,8 +15,10 @@ interface User {
 
 interface AuthContextType {
   user: User | null;
+  token: string | null;
   isLoading: boolean;
-  login: (email: string, nome: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<void>;
+  register: (email: string, password: string, nome: string) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -24,52 +26,85 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    loadUser();
+    loadStoredAuth();
   }, []);
 
-  const loadUser = async () => {
+  const loadStoredAuth = async () => {
     try {
-      const storedUser = await AsyncStorage.getItem('user');
-      if (storedUser) {
-        setUser(JSON.parse(storedUser));
+      const storedToken = await AsyncStorage.getItem('token');
+      if (storedToken) {
+        // Verify token with backend
+        const response = await axios.get(`${BACKEND_URL}/api/auth/verify?token=${storedToken}`);
+        setUser(response.data);
+        setToken(storedToken);
       }
     } catch (error) {
-      console.error('Error loading user:', error);
+      // Token invalid or expired, clear storage
+      await AsyncStorage.removeItem('token');
+      await AsyncStorage.removeItem('user');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const login = async (email: string, nome: string) => {
+  const login = async (email: string, password: string) => {
     try {
-      const response = await axios.post(`${BACKEND_URL}/api/users`, {
+      const response = await axios.post(`${BACKEND_URL}/api/auth/login`, {
         email,
-        nome,
-        tipo: 'utente'
+        password
       });
-      const userData = response.data;
+      
+      const { access_token, user: userData } = response.data;
+      
+      setToken(access_token);
       setUser(userData);
+      
+      await AsyncStorage.setItem('token', access_token);
       await AsyncStorage.setItem('user', JSON.stringify(userData));
-    } catch (error) {
-      console.error('Error logging in:', error);
-      throw error;
+    } catch (error: any) {
+      const message = error.response?.data?.detail || 'Errore durante il login';
+      throw new Error(message);
+    }
+  };
+
+  const register = async (email: string, password: string, nome: string) => {
+    try {
+      const response = await axios.post(`${BACKEND_URL}/api/auth/register`, {
+        email,
+        password,
+        nome
+      });
+      
+      const { access_token, user: userData } = response.data;
+      
+      setToken(access_token);
+      setUser(userData);
+      
+      await AsyncStorage.setItem('token', access_token);
+      await AsyncStorage.setItem('user', JSON.stringify(userData));
+    } catch (error: any) {
+      const message = error.response?.data?.detail || 'Errore durante la registrazione';
+      throw new Error(message);
     }
   };
 
   const logout = async () => {
     try {
+      await AsyncStorage.removeItem('token');
       await AsyncStorage.removeItem('user');
       setUser(null);
+      setToken(null);
     } catch (error) {
       console.error('Error logging out:', error);
     }
   };
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, logout }}>
+    <AuthContext.Provider value={{ user, token, isLoading, login, register, logout }}>
       {children}
     </AuthContext.Provider>
   );

@@ -18,11 +18,14 @@ import { useAuth } from '../src/context/AuthContext';
 import { COLORS, SHADOWS } from '../src/constants/theme';
 
 export default function AuthScreen() {
-  const { user, isLoading, login } = useAuth();
+  const { user, isLoading, login, register } = useAuth();
   const [isLoginMode, setIsLoginMode] = useState(true);
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [nome, setNome] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     if (!isLoading && user) {
@@ -31,26 +34,52 @@ export default function AuthScreen() {
   }, [user, isLoading]);
 
   const handleSubmit = async () => {
+    // Validation
     if (!email.trim()) {
       Alert.alert('Errore', 'Inserisci la tua email');
       return;
     }
 
-    if (!isLoginMode && !nome.trim()) {
-      Alert.alert('Errore', 'Inserisci il tuo nome');
+    if (!password.trim()) {
+      Alert.alert('Errore', 'Inserisci la password');
       return;
+    }
+
+    if (password.length < 6) {
+      Alert.alert('Errore', 'La password deve avere almeno 6 caratteri');
+      return;
+    }
+
+    if (!isLoginMode) {
+      if (!nome.trim()) {
+        Alert.alert('Errore', 'Inserisci il tuo nome');
+        return;
+      }
+      if (password !== confirmPassword) {
+        Alert.alert('Errore', 'Le password non coincidono');
+        return;
+      }
     }
 
     setIsSubmitting(true);
     try {
-      const displayName = isLoginMode ? email.split('@')[0] : nome;
-      await login(email.toLowerCase().trim(), displayName);
+      if (isLoginMode) {
+        await login(email.toLowerCase().trim(), password);
+      } else {
+        await register(email.toLowerCase().trim(), password, nome.trim());
+      }
       router.replace('/(tabs)');
-    } catch (error) {
-      Alert.alert('Errore', 'Si e verificato un errore. Riprova.');
+    } catch (error: any) {
+      Alert.alert('Errore', error.message || 'Si e verificato un errore. Riprova.');
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const switchMode = () => {
+    setIsLoginMode(!isLoginMode);
+    setPassword('');
+    setConfirmPassword('');
   };
 
   if (isLoading) {
@@ -83,7 +112,7 @@ export default function AuthScreen() {
           {/* Form Card */}
           <View style={styles.card}>
             <Text style={styles.cardTitle}>
-              {isLoginMode ? 'BENTORNATO' : 'UNISCITI AL CLUB'}
+              {isLoginMode ? 'ACCEDI' : 'REGISTRATI'}
             </Text>
 
             {!isLoginMode && (
@@ -110,8 +139,44 @@ export default function AuthScreen() {
                 onChangeText={setEmail}
                 keyboardType="email-address"
                 autoCapitalize="none"
+                autoCorrect={false}
               />
             </View>
+
+            <View style={styles.inputContainer}>
+              <Ionicons name="lock-closed-outline" size={20} color={COLORS.textSecondary} />
+              <TextInput
+                style={styles.input}
+                placeholder="Password"
+                placeholderTextColor={COLORS.textMuted}
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={!showPassword}
+                autoCapitalize="none"
+              />
+              <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                <Ionicons 
+                  name={showPassword ? "eye-off-outline" : "eye-outline"} 
+                  size={20} 
+                  color={COLORS.textSecondary} 
+                />
+              </TouchableOpacity>
+            </View>
+
+            {!isLoginMode && (
+              <View style={styles.inputContainer}>
+                <Ionicons name="lock-closed-outline" size={20} color={COLORS.textSecondary} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Conferma Password"
+                  placeholderTextColor={COLORS.textMuted}
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                  secureTextEntry={!showPassword}
+                  autoCapitalize="none"
+                />
+              </View>
+            )}
 
             <TouchableOpacity
               style={styles.submitButton}
@@ -131,7 +196,7 @@ export default function AuthScreen() {
 
             <TouchableOpacity
               style={styles.switchButton}
-              onPress={() => setIsLoginMode(!isLoginMode)}
+              onPress={switchMode}
             >
               <Text style={styles.switchText}>
                 {isLoginMode
@@ -173,11 +238,11 @@ const styles = StyleSheet.create({
   },
   logoSection: {
     alignItems: 'center',
-    marginBottom: 30,
+    marginBottom: 24,
   },
   logo: {
-    width: 200,
-    height: 200,
+    width: 180,
+    height: 160,
   },
   card: {
     backgroundColor: COLORS.surface,
@@ -186,7 +251,7 @@ const styles = StyleSheet.create({
     ...SHADOWS.card,
   },
   cardTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 'bold',
     color: COLORS.accent,
     textAlign: 'center',
@@ -237,7 +302,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   footer: {
-    marginTop: 30,
+    marginTop: 24,
     alignItems: 'center',
   },
   footerText: {
