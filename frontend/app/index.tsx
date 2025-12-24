@@ -183,13 +183,15 @@ export default function AuthScreen() {
               </View>
             )}
 
-            <Pressable
-              style={({ pressed }) => [
-                styles.submitButton,
-                pressed && { opacity: 0.8 }
-              ]}
-              onPress={handleSubmit}
+            <TouchableOpacity
+              style={styles.submitButton}
+              onPress={() => {
+                console.log('Button pressed!');
+                handleSubmit();
+              }}
               disabled={isSubmitting}
+              activeOpacity={0.7}
+              accessibilityRole="button"
             >
               <View style={styles.buttonGradient}>
                 {isSubmitting ? (
@@ -200,7 +202,7 @@ export default function AuthScreen() {
                   </Text>
                 )}
               </View>
-            </Pressable>
+            </TouchableOpacity>
 
             <TouchableOpacity
               style={styles.switchButton}
