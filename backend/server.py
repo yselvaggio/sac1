@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter
+from fastapi import FastAPI, APIRouter, HTTPException
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -6,7 +6,7 @@ import os
 import logging
 from pathlib import Path
 from pydantic import BaseModel, Field
-from typing import List
+from typing import List, Optional
 import uuid
 from datetime import datetime
 
@@ -25,32 +25,147 @@ app = FastAPI()
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
 
+# ============== MODELS ==============
 
-# Define Models
-class StatusCheck(BaseModel):
+# User Model
+class User(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    client_name: str
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    email: str
+    nome: str
+    tipo: str = "utente"  # "utente" or "partner"
+    member_id: str = Field(default_factory=lambda: f"#{str(uuid.uuid4())[:6].upper()}")
+    created_at: datetime = Field(default_factory=datetime.utcnow)
 
-class StatusCheckCreate(BaseModel):
-    client_name: str
+class UserCreate(BaseModel):
+    email: str
+    nome: str
+    tipo: str = "utente"
 
-# Add your routes to the router instead of directly to app
+class UserUpdate(BaseModel):
+    nome: Optional[str] = None
+    tipo: Optional[str] = None
+
+# Partner Offer Model
+class PartnerOffer(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    titolo: str
+    descrizione: str
+    azienda: str
+    immagine_url: Optional[str] = None
+    sconto: Optional[str] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+class PartnerOfferCreate(BaseModel):
+    titolo: str
+    descrizione: str
+    azienda: str
+    immagine_url: Optional[str] = None
+    sconto: Optional[str] = None
+
+# Community Board Post Model
+class CommunityPost(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    autore_id: str
+    autore_nome: str
+    titolo: str
+    corpo: str
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+class CommunityPostCreate(BaseModel):
+    autore_id: str
+    autore_nome: str
+    titolo: str
+    corpo: str
+
+# ============== USER ENDPOINTS ==============
+
+@api_router.post("/users", response_model=User)
+async def create_user(user: UserCreate):
+    """Create a new user or return existing one"""
+    # Check if user exists
+    existing = await db.users.find_one({"email": user.email})
+    if existing:
+        return User(**existing)
+    
+    user_obj = User(**user.dict())
+    await db.users.insert_one(user_obj.dict())
+    return user_obj
+
+@api_router.get("/users/{email}", response_model=User)
+async def get_user_by_email(email: str):
+    """Get user by email"""
+    user = await db.users.find_one({"email": email})
+    if not user:
+        raise HTTPException(status_code=404, detail="Utente non trovato")
+    return User(**user)
+
+@api_router.put("/users/{user_id}", response_model=User)
+async def update_user(user_id: str, user_update: UserUpdate):
+    """Update user profile"""
+    update_data = {k: v for k, v in user_update.dict().items() if v is not None}
+    if update_data:
+        await db.users.update_one({"id": user_id}, {"$set": update_data})
+    
+    user = await db.users.find_one({"id": user_id})
+    if not user:
+        raise HTTPException(status_code=404, detail="Utente non trovato")
+    return User(**user)
+
+# ============== PARTNER OFFERS ENDPOINTS ==============
+
+@api_router.get("/partner-offers", response_model=List[PartnerOffer])
+async def get_partner_offers():
+    """Get all partner offers"""
+    offers = await db.partner_offers.find().sort("created_at", -1).to_list(100)
+    return [PartnerOffer(**offer) for offer in offers]
+
+@api_router.post("/partner-offers", response_model=PartnerOffer)
+async def create_partner_offer(offer: PartnerOfferCreate):
+    """Create a new partner offer (admin only)"""
+    offer_obj = PartnerOffer(**offer.dict())
+    await db.partner_offers.insert_one(offer_obj.dict())
+    return offer_obj
+
+@api_router.delete("/partner-offers/{offer_id}")
+async def delete_partner_offer(offer_id: str):
+    """Delete a partner offer"""
+    result = await db.partner_offers.delete_one({"id": offer_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Offerta non trovata")
+    return {"message": "Offerta eliminata"}
+
+# ============== COMMUNITY BOARD ENDPOINTS ==============
+
+@api_router.get("/community-posts", response_model=List[CommunityPost])
+async def get_community_posts():
+    """Get all community posts"""
+    posts = await db.community_posts.find().sort("created_at", -1).to_list(100)
+    return [CommunityPost(**post) for post in posts]
+
+@api_router.post("/community-posts", response_model=CommunityPost)
+async def create_community_post(post: CommunityPostCreate):
+    """Create a new community post"""
+    post_obj = CommunityPost(**post.dict())
+    await db.community_posts.insert_one(post_obj.dict())
+    return post_obj
+
+@api_router.delete("/community-posts/{post_id}")
+async def delete_community_post(post_id: str):
+    """Delete a community post"""
+    result = await db.community_posts.delete_one({"id": post_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Post non trovato")
+    return {"message": "Post eliminato"}
+
+# ============== HEALTH CHECK ==============
+
 @api_router.get("/")
 async def root():
-    return {"message": "Hello World"}
+    return {"message": "Solucion Albania Club API", "status": "online"}
 
-@api_router.post("/status", response_model=StatusCheck)
-async def create_status_check(input: StatusCheckCreate):
-    status_dict = input.dict()
-    status_obj = StatusCheck(**status_dict)
-    _ = await db.status_checks.insert_one(status_obj.dict())
-    return status_obj
-
-@api_router.get("/status", response_model=List[StatusCheck])
-async def get_status_checks():
-    status_checks = await db.status_checks.find().to_list(1000)
-    return [StatusCheck(**status_check) for status_check in status_checks]
+@api_router.get("/health")
+async def health_check():
+    return {"status": "healthy"}
 
 # Include the router in the main app
 app.include_router(api_router)
