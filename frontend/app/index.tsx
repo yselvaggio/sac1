@@ -18,7 +18,7 @@ import { useAuth } from '../src/context/AuthContext';
 import { COLORS, SHADOWS } from '../src/constants/theme';
 
 export default function AuthScreen() {
-  const { user, isLoading, login, register, loginWithGoogle, googleRequest } = useAuth();
+  const { user, isLoading, login, register } = useAuth();
   const [isLoginMode, setIsLoginMode] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -34,7 +34,6 @@ export default function AuthScreen() {
   }, [user, isLoading]);
 
   const handleSubmit = async () => {
-    console.log('handleSubmit called');
     if (!email.trim()) {
       Alert.alert('Errore', 'Inserisci la tua email');
       return;
@@ -62,28 +61,17 @@ export default function AuthScreen() {
     }
 
     setIsSubmitting(true);
-    console.log('Submitting...', isLoginMode ? 'login' : 'register');
     try {
       if (isLoginMode) {
         await login(email.toLowerCase().trim(), password);
       } else {
         await register(email.toLowerCase().trim(), password, nome.trim());
       }
-      console.log('Auth success, redirecting...');
       router.replace('/(tabs)');
     } catch (error: any) {
-      console.log('Auth error:', error.message);
       Alert.alert('Errore', error.message || 'Si e verificato un errore. Riprova.');
     } finally {
       setIsSubmitting(false);
-    }
-  };
-
-  const handleGoogleLogin = async () => {
-    try {
-      await loginWithGoogle();
-    } catch (error: any) {
-      Alert.alert('Errore', error.message || 'Errore con Google');
     }
   };
 
@@ -125,26 +113,6 @@ export default function AuthScreen() {
             <Text style={styles.cardTitle}>
               {isLoginMode ? 'ACCEDI' : 'REGISTRATI'}
             </Text>
-
-            {/* Google Login Button */}
-            <TouchableOpacity
-              style={styles.googleButton}
-              onPress={handleGoogleLogin}
-              disabled={!googleRequest}
-              activeOpacity={0.8}
-              accessibilityRole="button"
-            >
-              <Ionicons name="logo-google" size={20} color="#DB4437" />
-              <Text style={styles.googleButtonText}>
-                {isLoginMode ? 'Accedi con Google' : 'Registrati con Google'}
-              </Text>
-            </TouchableOpacity>
-
-            <View style={styles.dividerContainer}>
-              <View style={styles.divider} />
-              <Text style={styles.dividerText}>oppure</Text>
-              <View style={styles.divider} />
-            </View>
 
             {!isLoginMode && (
               <View style={styles.inputContainer}>
@@ -211,10 +179,7 @@ export default function AuthScreen() {
 
             <TouchableOpacity
               style={styles.submitButton}
-              onPress={() => {
-                console.log('Button pressed!');
-                handleSubmit();
-              }}
+              onPress={handleSubmit}
               disabled={isSubmitting}
               activeOpacity={0.7}
               accessibilityRole="button"
@@ -274,11 +239,11 @@ const styles = StyleSheet.create({
   },
   logoSection: {
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 24,
   },
   logo: {
-    width: 160,
-    height: 140,
+    width: 180,
+    height: 160,
   },
   card: {
     backgroundColor: COLORS.surface,
@@ -287,43 +252,12 @@ const styles = StyleSheet.create({
     ...SHADOWS.card,
   },
   cardTitle: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: 'bold',
     color: COLORS.accent,
     textAlign: 'center',
-    marginBottom: 20,
+    marginBottom: 24,
     letterSpacing: 2,
-  },
-  googleButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    marginBottom: 16,
-  },
-  googleButtonText: {
-    color: '#333333',
-    fontSize: 16,
-    fontWeight: '600',
-    marginLeft: 10,
-  },
-  dividerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  divider: {
-    flex: 1,
-    height: 1,
-    backgroundColor: COLORS.border,
-  },
-  dividerText: {
-    color: COLORS.textMuted,
-    paddingHorizontal: 16,
-    fontSize: 14,
   },
   inputContainer: {
     flexDirection: 'row',
@@ -331,13 +265,13 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.surfaceLight,
     borderRadius: 12,
     paddingHorizontal: 16,
-    marginBottom: 12,
+    marginBottom: 16,
     borderWidth: 1,
     borderColor: COLORS.border,
   },
   input: {
     flex: 1,
-    paddingVertical: 14,
+    paddingVertical: 16,
     paddingHorizontal: 12,
     color: COLORS.textPrimary,
     fontSize: 16,
@@ -361,7 +295,7 @@ const styles = StyleSheet.create({
     letterSpacing: 2,
   },
   switchButton: {
-    marginTop: 16,
+    marginTop: 20,
     alignItems: 'center',
   },
   switchText: {
@@ -369,7 +303,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   footer: {
-    marginTop: 20,
+    marginTop: 24,
     alignItems: 'center',
   },
   footerText: {
