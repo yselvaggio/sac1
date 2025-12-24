@@ -5,7 +5,6 @@ import {
   StyleSheet,
   TextInput,
   TouchableOpacity,
-  Pressable,
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
@@ -19,7 +18,7 @@ import { useAuth } from '../src/context/AuthContext';
 import { COLORS, SHADOWS } from '../src/constants/theme';
 
 export default function AuthScreen() {
-  const { user, isLoading, login, register } = useAuth();
+  const { user, isLoading, login, register, loginWithGoogle, googleRequest } = useAuth();
   const [isLoginMode, setIsLoginMode] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -36,7 +35,6 @@ export default function AuthScreen() {
 
   const handleSubmit = async () => {
     console.log('handleSubmit called');
-    // Validation
     if (!email.trim()) {
       Alert.alert('Errore', 'Inserisci la tua email');
       return;
@@ -81,6 +79,14 @@ export default function AuthScreen() {
     }
   };
 
+  const handleGoogleLogin = async () => {
+    try {
+      await loginWithGoogle();
+    } catch (error: any) {
+      Alert.alert('Errore', error.message || 'Errore con Google');
+    }
+  };
+
   const switchMode = () => {
     setIsLoginMode(!isLoginMode);
     setPassword('');
@@ -119,6 +125,26 @@ export default function AuthScreen() {
             <Text style={styles.cardTitle}>
               {isLoginMode ? 'ACCEDI' : 'REGISTRATI'}
             </Text>
+
+            {/* Google Login Button */}
+            <TouchableOpacity
+              style={styles.googleButton}
+              onPress={handleGoogleLogin}
+              disabled={!googleRequest}
+              activeOpacity={0.8}
+              accessibilityRole="button"
+            >
+              <Ionicons name="logo-google" size={20} color="#DB4437" />
+              <Text style={styles.googleButtonText}>
+                {isLoginMode ? 'Accedi con Google' : 'Registrati con Google'}
+              </Text>
+            </TouchableOpacity>
+
+            <View style={styles.dividerContainer}>
+              <View style={styles.divider} />
+              <Text style={styles.dividerText}>oppure</Text>
+              <View style={styles.divider} />
+            </View>
 
             {!isLoginMode && (
               <View style={styles.inputContainer}>
@@ -248,11 +274,11 @@ const styles = StyleSheet.create({
   },
   logoSection: {
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 20,
   },
   logo: {
-    width: 180,
-    height: 160,
+    width: 160,
+    height: 140,
   },
   card: {
     backgroundColor: COLORS.surface,
@@ -265,8 +291,39 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: COLORS.accent,
     textAlign: 'center',
-    marginBottom: 24,
+    marginBottom: 20,
     letterSpacing: 2,
+  },
+  googleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    marginBottom: 16,
+  },
+  googleButtonText: {
+    color: '#333333',
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 10,
+  },
+  dividerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  divider: {
+    flex: 1,
+    height: 1,
+    backgroundColor: COLORS.border,
+  },
+  dividerText: {
+    color: COLORS.textMuted,
+    paddingHorizontal: 16,
+    fontSize: 14,
   },
   inputContainer: {
     flexDirection: 'row',
@@ -274,13 +331,13 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.surfaceLight,
     borderRadius: 12,
     paddingHorizontal: 16,
-    marginBottom: 16,
+    marginBottom: 12,
     borderWidth: 1,
     borderColor: COLORS.border,
   },
   input: {
     flex: 1,
-    paddingVertical: 16,
+    paddingVertical: 14,
     paddingHorizontal: 12,
     color: COLORS.textPrimary,
     fontSize: 16,
@@ -304,7 +361,7 @@ const styles = StyleSheet.create({
     letterSpacing: 2,
   },
   switchButton: {
-    marginTop: 20,
+    marginTop: 16,
     alignItems: 'center',
   },
   switchText: {
@@ -312,7 +369,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   footer: {
-    marginTop: 24,
+    marginTop: 20,
     alignItems: 'center',
   },
   footerText: {
