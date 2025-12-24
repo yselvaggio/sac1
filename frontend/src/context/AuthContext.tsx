@@ -1,15 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
-import * as Google from 'expo-auth-session/providers/google';
-import * as WebBrowser from 'expo-web-browser';
-
-WebBrowser.maybeCompleteAuthSession();
 
 const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
-
-// Google OAuth Client IDs - Using Expo's default for development
-const GOOGLE_WEB_CLIENT_ID = '275878578780-4vn56qj7jmabvmkofhaj5k0gu8au0hhe.apps.googleusercontent.com';
 
 interface User {
   id: string;
@@ -26,10 +19,7 @@ interface AuthContextType {
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, nome: string) => Promise<void>;
-  loginWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
-  googleRequest: any;
-  googlePromptAsync: any;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -39,22 +29,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const [googleRequest, googleResponse, googlePromptAsync] = Google.useIdTokenAuthRequest({
-    webClientId: GOOGLE_WEB_CLIENT_ID,
-    selectAccount: true,
-  });
-
   useEffect(() => {
     loadStoredAuth();
   }, []);
-
-  // Handle Google OAuth response
-  useEffect(() => {
-    if (googleResponse?.type === 'success') {
-      const { id_token } = googleResponse.params;
-      handleGoogleAuth(id_token);
-    }
-  }, [googleResponse]);
 
   const loadStoredAuth = async () => {
     try {
@@ -113,31 +90,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const handleGoogleAuth = async (idToken: string) => {
-    try {
-      const response = await axios.post(`${BACKEND_URL}/api/auth/google`, {
-        id_token: idToken
-      });
-      
-      const { access_token, user: userData } = response.data;
-      
-      setToken(access_token);
-      setUser(userData);
-      
-      await AsyncStorage.setItem('token', access_token);
-      await AsyncStorage.setItem('user', JSON.stringify(userData));
-    } catch (error: any) {
-      const message = error.response?.data?.detail || 'Errore con Google';
-      throw new Error(message);
-    }
-  };
-
-  const loginWithGoogle = async () => {
-    if (googlePromptAsync) {
-      await googlePromptAsync();
-    }
-  };
-
   const logout = async () => {
     try {
       await AsyncStorage.removeItem('token');
@@ -150,17 +102,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      token, 
-      isLoading, 
-      login, 
-      register, 
-      loginWithGoogle,
-      logout,
-      googleRequest,
-      googlePromptAsync 
-    }}>
+    <AuthContext.Provider value={{ user, token, isLoading, login, register, logout }}>
       {children}
     </AuthContext.Provider>
   );
