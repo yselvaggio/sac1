@@ -1,15 +1,16 @@
-from fastapi import FastAPI, APIRouter, HTTPException
+from fastapi import FastAPI, APIRouter, HTTPException, status
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
 from pathlib import Path
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, EmailStr
 from typing import List, Optional
 import uuid
-from datetime import datetime
-
+from datetime import datetime, timedelta
+from passlib.context import CryptContext
+from jose import JWTError, jwt
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -18,6 +19,14 @@ load_dotenv(ROOT_DIR / '.env')
 mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
+
+# Password hashing
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+# JWT Settings
+SECRET_KEY = os.environ.get('SECRET_KEY', 'solucion-albania-club-secret-key-2025')
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_DAYS = 30
 
 # Create the main app without a prefix
 app = FastAPI()
@@ -36,10 +45,22 @@ class User(BaseModel):
     member_id: str = Field(default_factory=lambda: f"#{str(uuid.uuid4())[:6].upper()}")
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
-class UserCreate(BaseModel):
-    email: str
+class UserInDB(User):
+    hashed_password: str
+
+class UserRegister(BaseModel):
+    email: EmailStr
+    password: str
     nome: str
-    tipo: str = "utente"
+
+class UserLogin(BaseModel):
+    email: EmailStr
+    password: str
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+    user: User
 
 class UserUpdate(BaseModel):
     nome: Optional[str] = None
@@ -77,39 +98,133 @@ class CommunityPostCreate(BaseModel):
     titolo: str
     corpo: str
 
-# ============== USER ENDPOINTS ==============
+# ============== HELPER FUNCTIONS ==============
 
-@api_router.post("/users", response_model=User)
-async def create_user(user: UserCreate):
-    """Create a new user or return existing one"""
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    return pwd_context.verify(plain_password, hashed_password)
+
+def get_password_hash(password: str) -> str:
+    return pwd_context.hash(password)
+
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.utcnow() + timedelta(days=ACCESS_TOKEN_EXPIRE_DAYS)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
+# ============== AUTH ENDPOINTS ==============
+
+@api_router.post("/auth/register", response_model=Token)
+async def register(user_data: UserRegister):
+    """Register a new user"""
     # Check if user exists
-    existing = await db.users.find_one({"email": user.email})
+    existing = await db.users.find_one({"email": user_data.email.lower()})
     if existing:
-        return User(**existing)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email gia registrata"
+        )
     
-    user_obj = User(**user.dict())
-    await db.users.insert_one(user_obj.dict())
-    return user_obj
-
-@api_router.get("/users/{email}", response_model=User)
-async def get_user_by_email(email: str):
-    """Get user by email"""
-    user = await db.users.find_one({"email": email})
-    if not user:
-        raise HTTPException(status_code=404, detail="Utente non trovato")
-    return User(**user)
-
-@api_router.put("/users/{user_id}", response_model=User)
-async def update_user(user_id: str, user_update: UserUpdate):
-    """Update user profile"""
-    update_data = {k: v for k, v in user_update.dict().items() if v is not None}
-    if update_data:
-        await db.users.update_one({"id": user_id}, {"$set": update_data})
+    # Validate password
+    if len(user_data.password) < 6:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="La password deve avere almeno 6 caratteri"
+        )
     
-    user = await db.users.find_one({"id": user_id})
-    if not user:
-        raise HTTPException(status_code=404, detail="Utente non trovato")
-    return User(**user)
+    # Create user
+    user_id = str(uuid.uuid4())
+    member_id = f"#{str(uuid.uuid4())[:6].upper()}"
+    hashed_password = get_password_hash(user_data.password)
+    
+    user_dict = {
+        "id": user_id,
+        "email": user_data.email.lower(),
+        "nome": user_data.nome,
+        "tipo": "utente",
+        "member_id": member_id,
+        "hashed_password": hashed_password,
+        "created_at": datetime.utcnow()
+    }
+    
+    await db.users.insert_one(user_dict)
+    
+    # Create token
+    access_token = create_access_token(data={"sub": user_id, "email": user_data.email.lower()})
+    
+    # Return user without password
+    user = User(
+        id=user_id,
+        email=user_data.email.lower(),
+        nome=user_data.nome,
+        tipo="utente",
+        member_id=member_id,
+        created_at=user_dict["created_at"]
+    )
+    
+    return Token(access_token=access_token, token_type="bearer", user=user)
+
+@api_router.post("/auth/login", response_model=Token)
+async def login(credentials: UserLogin):
+    """Login with email and password"""
+    # Find user
+    user_doc = await db.users.find_one({"email": credentials.email.lower()})
+    
+    if not user_doc:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Email o password non corretti"
+        )
+    
+    # Verify password
+    if not verify_password(credentials.password, user_doc.get("hashed_password", "")):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Email o password non corretti"
+        )
+    
+    # Create token
+    access_token = create_access_token(data={"sub": user_doc["id"], "email": user_doc["email"]})
+    
+    # Return user without password
+    user = User(
+        id=user_doc["id"],
+        email=user_doc["email"],
+        nome=user_doc["nome"],
+        tipo=user_doc.get("tipo", "utente"),
+        member_id=user_doc.get("member_id", "#000000"),
+        created_at=user_doc.get("created_at", datetime.utcnow())
+    )
+    
+    return Token(access_token=access_token, token_type="bearer", user=user)
+
+@api_router.get("/auth/verify")
+async def verify_token(token: str):
+    """Verify JWT token and return user data"""
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id = payload.get("sub")
+        if user_id is None:
+            raise HTTPException(status_code=401, detail="Token non valido")
+        
+        user_doc = await db.users.find_one({"id": user_id})
+        if not user_doc:
+            raise HTTPException(status_code=401, detail="Utente non trovato")
+        
+        return User(
+            id=user_doc["id"],
+            email=user_doc["email"],
+            nome=user_doc["nome"],
+            tipo=user_doc.get("tipo", "utente"),
+            member_id=user_doc.get("member_id", "#000000"),
+            created_at=user_doc.get("created_at", datetime.utcnow())
+        )
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Token non valido o scaduto")
 
 # ============== PARTNER OFFERS ENDPOINTS ==============
 
