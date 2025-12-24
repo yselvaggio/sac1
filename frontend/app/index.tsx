@@ -35,6 +35,7 @@ export default function AuthScreen() {
   }, [user, isLoading]);
 
   const handleSubmit = async () => {
+    console.log('handleSubmit called');
     // Validation
     if (!email.trim()) {
       Alert.alert('Errore', 'Inserisci la tua email');
@@ -63,14 +64,17 @@ export default function AuthScreen() {
     }
 
     setIsSubmitting(true);
+    console.log('Submitting...', isLoginMode ? 'login' : 'register');
     try {
       if (isLoginMode) {
         await login(email.toLowerCase().trim(), password);
       } else {
         await register(email.toLowerCase().trim(), password, nome.trim());
       }
+      console.log('Auth success, redirecting...');
       router.replace('/(tabs)');
     } catch (error: any) {
+      console.log('Auth error:', error.message);
       Alert.alert('Errore', error.message || 'Si e verificato un errore. Riprova.');
     } finally {
       setIsSubmitting(false);
