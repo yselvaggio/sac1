@@ -29,9 +29,6 @@ SECRET_KEY = os.environ.get('SECRET_KEY', 'solucion-albania-club-secret-key-2025
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_DAYS = 30
 
-# Google OAuth Settings
-GOOGLE_CLIENT_ID = os.environ.get('GOOGLE_CLIENT_ID', '')
-
 # Create the main app without a prefix
 app = FastAPI()
 
@@ -40,17 +37,13 @@ api_router = APIRouter(prefix="/api")
 
 # ============== MODELS ==============
 
-# User Model
 class User(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     email: str
     nome: str
-    tipo: str = "utente"  # "utente" or "partner"
+    tipo: str = "utente"
     member_id: str = Field(default_factory=lambda: f"#{str(uuid.uuid4())[:6].upper()}")
     created_at: datetime = Field(default_factory=datetime.utcnow)
-
-class UserInDB(User):
-    hashed_password: str
 
 class UserRegister(BaseModel):
     email: EmailStr
@@ -61,6 +54,9 @@ class UserLogin(BaseModel):
     email: EmailStr
     password: str
 
+class GoogleAuthRequest(BaseModel):
+    id_token: str
+
 class Token(BaseModel):
     access_token: str
     token_type: str
@@ -70,7 +66,6 @@ class UserUpdate(BaseModel):
     nome: Optional[str] = None
     tipo: Optional[str] = None
 
-# Partner Offer Model
 class PartnerOffer(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     titolo: str
@@ -87,7 +82,6 @@ class PartnerOfferCreate(BaseModel):
     immagine_url: Optional[str] = None
     sconto: Optional[str] = None
 
-# Community Board Post Model
 class CommunityPost(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     autore_id: str
@@ -105,7 +99,12 @@ class CommunityPostCreate(BaseModel):
 # ============== HELPER FUNCTIONS ==============
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
+    if not hashed_password or len(hashed_password) < 10:
+        return False
+    try:
+        return pwd_context.verify(plain_password, hashed_password)
+    except Exception:
+        return False
 
 def get_password_hash(password: str) -> str:
     return pwd_context.hash(password)
@@ -120,12 +119,24 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
+async def verify_google_token(id_token: str) -> dict:
+    """Verify Google ID token and return user info"""
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                f"https://oauth2.googleapis.com/tokeninfo?id_token={id_token}"
+            )
+            if response.status_code != 200:
+                raise HTTPException(status_code=401, detail="Token Google non valido")
+            return response.json()
+    except Exception as e:
+        raise HTTPException(status_code=401, detail="Errore verifica token Google")
+
 # ============== AUTH ENDPOINTS ==============
 
 @api_router.post("/auth/register", response_model=Token)
 async def register(user_data: UserRegister):
-    """Register a new user"""
-    # Check if user exists
+    """Register a new user with email and password"""
     existing = await db.users.find_one({"email": user_data.email.lower()})
     if existing:
         raise HTTPException(
@@ -133,14 +144,12 @@ async def register(user_data: UserRegister):
             detail="Email gia registrata"
         )
     
-    # Validate password
     if len(user_data.password) < 6:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="La password deve avere almeno 6 caratteri"
         )
     
-    # Create user
     user_id = str(uuid.uuid4())
     member_id = f"#{str(uuid.uuid4())[:6].upper()}"
     hashed_password = get_password_hash(user_data.password)
@@ -152,15 +161,14 @@ async def register(user_data: UserRegister):
         "tipo": "utente",
         "member_id": member_id,
         "hashed_password": hashed_password,
+        "auth_provider": "email",
         "created_at": datetime.utcnow()
     }
     
     await db.users.insert_one(user_dict)
     
-    # Create token
     access_token = create_access_token(data={"sub": user_id, "email": user_data.email.lower()})
     
-    # Return user without password
     user = User(
         id=user_id,
         email=user_data.email.lower(),
@@ -175,7 +183,6 @@ async def register(user_data: UserRegister):
 @api_router.post("/auth/login", response_model=Token)
 async def login(credentials: UserLogin):
     """Login with email and password"""
-    # Find user
     user_doc = await db.users.find_one({"email": credentials.email.lower()})
     
     if not user_doc:
@@ -184,17 +191,21 @@ async def login(credentials: UserLogin):
             detail="Email o password non corretti"
         )
     
-    # Verify password
+    # Check if user registered with Google
+    if user_doc.get("auth_provider") == "google":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Questo account usa Google. Accedi con Google."
+        )
+    
     if not verify_password(credentials.password, user_doc.get("hashed_password", "")):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Email o password non corretti"
         )
     
-    # Create token
     access_token = create_access_token(data={"sub": user_doc["id"], "email": user_doc["email"]})
     
-    # Return user without password
     user = User(
         id=user_doc["id"],
         email=user_doc["email"],
@@ -203,6 +214,62 @@ async def login(credentials: UserLogin):
         member_id=user_doc.get("member_id", "#000000"),
         created_at=user_doc.get("created_at", datetime.utcnow())
     )
+    
+    return Token(access_token=access_token, token_type="bearer", user=user)
+
+@api_router.post("/auth/google", response_model=Token)
+async def google_auth(request: GoogleAuthRequest):
+    """Login or register with Google"""
+    # Verify Google token
+    google_user = await verify_google_token(request.id_token)
+    
+    email = google_user.get("email", "").lower()
+    nome = google_user.get("name", email.split("@")[0])
+    
+    if not email:
+        raise HTTPException(status_code=400, detail="Email non disponibile da Google")
+    
+    # Check if user exists
+    user_doc = await db.users.find_one({"email": email})
+    
+    if user_doc:
+        # Existing user - login
+        access_token = create_access_token(data={"sub": user_doc["id"], "email": email})
+        user = User(
+            id=user_doc["id"],
+            email=user_doc["email"],
+            nome=user_doc["nome"],
+            tipo=user_doc.get("tipo", "utente"),
+            member_id=user_doc.get("member_id", "#000000"),
+            created_at=user_doc.get("created_at", datetime.utcnow())
+        )
+    else:
+        # New user - register
+        user_id = str(uuid.uuid4())
+        member_id = f"#{str(uuid.uuid4())[:6].upper()}"
+        
+        user_dict = {
+            "id": user_id,
+            "email": email,
+            "nome": nome,
+            "tipo": "utente",
+            "member_id": member_id,
+            "auth_provider": "google",
+            "google_id": google_user.get("sub"),
+            "created_at": datetime.utcnow()
+        }
+        
+        await db.users.insert_one(user_dict)
+        
+        access_token = create_access_token(data={"sub": user_id, "email": email})
+        user = User(
+            id=user_id,
+            email=email,
+            nome=nome,
+            tipo="utente",
+            member_id=member_id,
+            created_at=user_dict["created_at"]
+        )
     
     return Token(access_token=access_token, token_type="bearer", user=user)
 
@@ -234,20 +301,17 @@ async def verify_token(token: str):
 
 @api_router.get("/partner-offers", response_model=List[PartnerOffer])
 async def get_partner_offers():
-    """Get all partner offers"""
     offers = await db.partner_offers.find().sort("created_at", -1).to_list(100)
     return [PartnerOffer(**offer) for offer in offers]
 
 @api_router.post("/partner-offers", response_model=PartnerOffer)
 async def create_partner_offer(offer: PartnerOfferCreate):
-    """Create a new partner offer (admin only)"""
     offer_obj = PartnerOffer(**offer.dict())
     await db.partner_offers.insert_one(offer_obj.dict())
     return offer_obj
 
 @api_router.delete("/partner-offers/{offer_id}")
 async def delete_partner_offer(offer_id: str):
-    """Delete a partner offer"""
     result = await db.partner_offers.delete_one({"id": offer_id})
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Offerta non trovata")
@@ -257,20 +321,17 @@ async def delete_partner_offer(offer_id: str):
 
 @api_router.get("/community-posts", response_model=List[CommunityPost])
 async def get_community_posts():
-    """Get all community posts"""
     posts = await db.community_posts.find().sort("created_at", -1).to_list(100)
     return [CommunityPost(**post) for post in posts]
 
 @api_router.post("/community-posts", response_model=CommunityPost)
 async def create_community_post(post: CommunityPostCreate):
-    """Create a new community post"""
     post_obj = CommunityPost(**post.dict())
     await db.community_posts.insert_one(post_obj.dict())
     return post_obj
 
 @api_router.delete("/community-posts/{post_id}")
 async def delete_community_post(post_id: str):
-    """Delete a community post"""
     result = await db.community_posts.delete_one({"id": post_id})
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Post non trovato")
@@ -297,7 +358,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
