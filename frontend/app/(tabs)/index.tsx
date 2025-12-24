@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useAuth } from '../../src/context/AuthContext';
@@ -31,12 +30,7 @@ export default function HomeScreen() {
 
         {/* Digital Member Card */}
         <View style={styles.cardContainer}>
-          <LinearGradient
-            colors={[COLORS.primary, '#3D0000', COLORS.secondary]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.memberCard}
-          >
+          <View style={styles.memberCard}>
             {/* Card Header */}
             <View style={styles.cardHeader}>
               <View style={styles.cardLogo}>
@@ -69,7 +63,7 @@ export default function HomeScreen() {
                 />
               </View>
             </View>
-          </LinearGradient>
+          </View>
         </View>
 
         {/* Quick Actions */}
@@ -115,7 +109,7 @@ export default function HomeScreen() {
           <View style={styles.infoContent}>
             <Text style={styles.infoTitle}>Come usare la tessera</Text>
             <Text style={styles.infoText}>
-              Mostra il QR Code ai nostri partner per ricevere sconti esclusivi. La tessera è valida in tutti i punti convenzionati.
+              Mostra il QR Code ai nostri partner per ricevere sconti esclusivi. La tessera e valida in tutti i punti convenzionati.
             </Text>
           </View>
         </View>
@@ -152,6 +146,7 @@ const styles = StyleSheet.create({
   memberCard: {
     borderRadius: 20,
     padding: 24,
+    backgroundColor: COLORS.primary,
     ...SHADOWS.card,
   },
   cardHeader: {

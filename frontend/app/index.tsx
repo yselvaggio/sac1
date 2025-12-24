@@ -11,7 +11,6 @@ import {
   ScrollView,
   Alert,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useAuth } from '../src/context/AuthContext';
@@ -47,7 +46,7 @@ export default function AuthScreen() {
       await login(email.toLowerCase().trim(), displayName);
       router.replace('/(tabs)');
     } catch (error) {
-      Alert.alert('Errore', 'Si è verificato un errore. Riprova.');
+      Alert.alert('Errore', 'Si e verificato un errore. Riprova.');
     } finally {
       setIsSubmitting(false);
     }
@@ -66,10 +65,7 @@ export default function AuthScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.container}
     >
-      <LinearGradient
-        colors={[COLORS.background, COLORS.primaryDark, COLORS.background]}
-        style={styles.gradient}
-      >
+      <View style={styles.gradient}>
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
@@ -121,10 +117,7 @@ export default function AuthScreen() {
               onPress={handleSubmit}
               disabled={isSubmitting}
             >
-              <LinearGradient
-                colors={[COLORS.primary, COLORS.primaryDark]}
-                style={styles.buttonGradient}
-              >
+              <View style={styles.buttonGradient}>
                 {isSubmitting ? (
                   <ActivityIndicator color={COLORS.accent} />
                 ) : (
@@ -132,7 +125,7 @@ export default function AuthScreen() {
                     {isLoginMode ? 'ACCEDI' : 'REGISTRATI'}
                   </Text>
                 )}
-              </LinearGradient>
+              </View>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -142,18 +135,18 @@ export default function AuthScreen() {
               <Text style={styles.switchText}>
                 {isLoginMode
                   ? "Non hai un account? Registrati"
-                  : 'Hai già un account? Accedi'}
+                  : 'Hai gia un account? Accedi'}
               </Text>
             </TouchableOpacity>
           </View>
 
           {/* Footer */}
           <View style={styles.footer}>
-            <Text style={styles.footerText}>Sconti esclusivi • Partner selezionati</Text>
+            <Text style={styles.footerText}>Sconti esclusivi - Partner selezionati</Text>
             <Text style={styles.footerText}>Community italiana in Albania</Text>
           </View>
         </ScrollView>
-      </LinearGradient>
+      </View>
     </KeyboardAvoidingView>
   );
 }
@@ -164,6 +157,7 @@ const styles = StyleSheet.create({
   },
   gradient: {
     flex: 1,
+    backgroundColor: COLORS.background,
   },
   scrollContent: {
     flexGrow: 1,
@@ -243,6 +237,8 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: COLORS.primary,
+    borderRadius: 12,
   },
   buttonText: {
     color: COLORS.accent,

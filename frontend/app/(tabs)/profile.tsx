@@ -8,7 +8,6 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import QRCode from 'react-native-qrcode-svg';
@@ -50,14 +49,11 @@ export default function ProfileScreen() {
         {/* Profile Card */}
         <View style={styles.profileCard}>
           <View style={styles.avatarContainer}>
-            <LinearGradient
-              colors={[COLORS.primary, COLORS.primaryDark]}
-              style={styles.avatar}
-            >
+            <View style={styles.avatar}>
               <Text style={styles.avatarText}>
                 {user?.nome?.charAt(0).toUpperCase() || '?'}
               </Text>
-            </LinearGradient>
+            </View>
           </View>
           <Text style={styles.userName}>{user?.nome || 'Membro'}</Text>
           <Text style={styles.userEmail}>{user?.email}</Text>
@@ -71,12 +67,7 @@ export default function ProfileScreen() {
         <View style={styles.qrSection}>
           <Text style={styles.sectionTitle}>La Tua Tessera Digitale</Text>
           <View style={styles.qrCard}>
-            <LinearGradient
-              colors={[COLORS.primary, '#3D0000', COLORS.secondary]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.qrCardInner}
-            >
+            <View style={styles.qrCardInner}>
               <View style={styles.qrHeader}>
                 <View style={styles.qrLogo}>
                   <Ionicons name="shield-checkmark" size={20} color={COLORS.accent} />
@@ -100,7 +91,7 @@ export default function ProfileScreen() {
                 <Text style={styles.qrName}>{user?.nome?.toUpperCase()}</Text>
                 <Text style={styles.qrId}>ID: {user?.member_id}</Text>
               </View>
-            </LinearGradient>
+            </View>
           </View>
           <Text style={styles.qrHint}>
             Mostra questo QR Code ai partner per ottenere sconti
@@ -209,6 +200,7 @@ const styles = StyleSheet.create({
     borderRadius: 40,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: COLORS.primary,
     borderWidth: 3,
     borderColor: COLORS.accent,
   },
@@ -258,6 +250,7 @@ const styles = StyleSheet.create({
   },
   qrCardInner: {
     padding: 20,
+    backgroundColor: COLORS.primary,
   },
   qrHeader: {
     flexDirection: 'row',
