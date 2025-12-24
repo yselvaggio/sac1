@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -69,13 +70,11 @@ export default function ProfileScreen() {
           <View style={styles.qrCard}>
             <View style={styles.qrCardInner}>
               <View style={styles.qrHeader}>
-                <View style={styles.qrLogo}>
-                  <Ionicons name="shield-checkmark" size={20} color={COLORS.accent} />
-                </View>
-                <View>
-                  <Text style={styles.qrBrand}>SOLUCION ALBANIA</Text>
-                  <Text style={styles.qrSubtitle}>TESSERA MEMBRO</Text>
-                </View>
+                <Image
+                  source={require('../../assets/logo.png')}
+                  style={styles.qrLogo}
+                  resizeMode="contain"
+                />
               </View>
               <View style={styles.qrCodeContainer}>
                 <View style={styles.qrCodeWrapper}>
@@ -250,32 +249,18 @@ const styles = StyleSheet.create({
   },
   qrCardInner: {
     padding: 20,
-    backgroundColor: COLORS.primary,
+    backgroundColor: '#1a1a1a',
+    borderWidth: 2,
+    borderColor: COLORS.accent,
+    borderRadius: 20,
   },
   qrHeader: {
-    flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 16,
   },
   qrLogo: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(0,0,0,0.3)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  qrBrand: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: COLORS.accent,
-    letterSpacing: 1,
-  },
-  qrSubtitle: {
-    fontSize: 10,
-    color: 'rgba(255,255,255,0.6)',
-    letterSpacing: 2,
+    width: 120,
+    height: 80,
   },
   qrCodeContainer: {
     alignItems: 'center',

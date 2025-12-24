@@ -5,6 +5,7 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -33,13 +34,11 @@ export default function HomeScreen() {
           <View style={styles.memberCard}>
             {/* Card Header */}
             <View style={styles.cardHeader}>
-              <View style={styles.cardLogo}>
-                <Ionicons name="shield-checkmark" size={28} color={COLORS.accent} />
-              </View>
-              <View>
-                <Text style={styles.cardBrand}>SOLUCION ALBANIA</Text>
-                <Text style={styles.cardSubtitle}>CLUB ESCLUSIVO</Text>
-              </View>
+              <Image
+                source={require('../../assets/logo.png')}
+                style={styles.cardLogo}
+                resizeMode="contain"
+              />
             </View>
 
             {/* Card Body */}
@@ -145,40 +144,26 @@ const styles = StyleSheet.create({
   },
   memberCard: {
     borderRadius: 20,
-    padding: 24,
-    backgroundColor: COLORS.primary,
+    padding: 20,
+    backgroundColor: '#1a1a1a',
+    borderWidth: 2,
+    borderColor: COLORS.accent,
     ...SHADOWS.card,
   },
   cardHeader: {
-    flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 16,
   },
   cardLogo: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(0,0,0,0.3)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  cardBrand: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: COLORS.accent,
-    letterSpacing: 1,
-  },
-  cardSubtitle: {
-    fontSize: 10,
-    color: 'rgba(255,255,255,0.6)',
-    letterSpacing: 2,
+    width: 140,
+    height: 100,
   },
   cardBody: {
-    marginBottom: 24,
+    marginBottom: 20,
+    alignItems: 'center',
   },
   memberName: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: 'bold',
     color: COLORS.textPrimary,
     letterSpacing: 2,

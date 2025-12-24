@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   ScrollView,
   Alert,
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -72,11 +73,11 @@ export default function AuthScreen() {
         >
           {/* Logo Section */}
           <View style={styles.logoSection}>
-            <View style={styles.logoContainer}>
-              <Ionicons name="shield-checkmark" size={60} color={COLORS.primary} />
-            </View>
-            <Text style={styles.title}>Solucion Albania</Text>
-            <Text style={styles.subtitle}>CLUB ESCLUSIVO</Text>
+            <Image
+              source={require('../assets/logo.png')}
+              style={styles.logo}
+              resizeMode="contain"
+            />
           </View>
 
           {/* Form Card */}
@@ -172,30 +173,11 @@ const styles = StyleSheet.create({
   },
   logoSection: {
     alignItems: 'center',
-    marginBottom: 40,
+    marginBottom: 30,
   },
-  logoContainer: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: COLORS.surface,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-    borderWidth: 2,
-    borderColor: COLORS.accent,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: COLORS.textPrimary,
-    marginBottom: 4,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: COLORS.accent,
-    letterSpacing: 4,
-    fontWeight: '600',
+  logo: {
+    width: 200,
+    height: 200,
   },
   card: {
     backgroundColor: COLORS.surface,
@@ -255,7 +237,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   footer: {
-    marginTop: 40,
+    marginTop: 30,
     alignItems: 'center',
   },
   footerText: {
