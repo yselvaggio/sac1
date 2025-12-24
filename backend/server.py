@@ -11,7 +11,6 @@ import uuid
 from datetime import datetime, timedelta
 from passlib.context import CryptContext
 from jose import JWTError, jwt
-import httpx
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -53,9 +52,6 @@ class UserRegister(BaseModel):
 class UserLogin(BaseModel):
     email: EmailStr
     password: str
-
-class GoogleAuthRequest(BaseModel):
-    id_token: str
 
 class Token(BaseModel):
     access_token: str
@@ -119,19 +115,6 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
-async def verify_google_token(id_token: str) -> dict:
-    """Verify Google ID token and return user info"""
-    try:
-        async with httpx.AsyncClient() as client:
-            response = await client.get(
-                f"https://oauth2.googleapis.com/tokeninfo?id_token={id_token}"
-            )
-            if response.status_code != 200:
-                raise HTTPException(status_code=401, detail="Token Google non valido")
-            return response.json()
-    except Exception as e:
-        raise HTTPException(status_code=401, detail="Errore verifica token Google")
-
 # ============== AUTH ENDPOINTS ==============
 
 @api_router.post("/auth/register", response_model=Token)
@@ -161,7 +144,6 @@ async def register(user_data: UserRegister):
         "tipo": "utente",
         "member_id": member_id,
         "hashed_password": hashed_password,
-        "auth_provider": "email",
         "created_at": datetime.utcnow()
     }
     
@@ -191,13 +173,6 @@ async def login(credentials: UserLogin):
             detail="Email o password non corretti"
         )
     
-    # Check if user registered with Google
-    if user_doc.get("auth_provider") == "google":
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Questo account usa Google. Accedi con Google."
-        )
-    
     if not verify_password(credentials.password, user_doc.get("hashed_password", "")):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -214,62 +189,6 @@ async def login(credentials: UserLogin):
         member_id=user_doc.get("member_id", "#000000"),
         created_at=user_doc.get("created_at", datetime.utcnow())
     )
-    
-    return Token(access_token=access_token, token_type="bearer", user=user)
-
-@api_router.post("/auth/google", response_model=Token)
-async def google_auth(request: GoogleAuthRequest):
-    """Login or register with Google"""
-    # Verify Google token
-    google_user = await verify_google_token(request.id_token)
-    
-    email = google_user.get("email", "").lower()
-    nome = google_user.get("name", email.split("@")[0])
-    
-    if not email:
-        raise HTTPException(status_code=400, detail="Email non disponibile da Google")
-    
-    # Check if user exists
-    user_doc = await db.users.find_one({"email": email})
-    
-    if user_doc:
-        # Existing user - login
-        access_token = create_access_token(data={"sub": user_doc["id"], "email": email})
-        user = User(
-            id=user_doc["id"],
-            email=user_doc["email"],
-            nome=user_doc["nome"],
-            tipo=user_doc.get("tipo", "utente"),
-            member_id=user_doc.get("member_id", "#000000"),
-            created_at=user_doc.get("created_at", datetime.utcnow())
-        )
-    else:
-        # New user - register
-        user_id = str(uuid.uuid4())
-        member_id = f"#{str(uuid.uuid4())[:6].upper()}"
-        
-        user_dict = {
-            "id": user_id,
-            "email": email,
-            "nome": nome,
-            "tipo": "utente",
-            "member_id": member_id,
-            "auth_provider": "google",
-            "google_id": google_user.get("sub"),
-            "created_at": datetime.utcnow()
-        }
-        
-        await db.users.insert_one(user_dict)
-        
-        access_token = create_access_token(data={"sub": user_id, "email": email})
-        user = User(
-            id=user_id,
-            email=email,
-            nome=nome,
-            tipo="utente",
-            member_id=member_id,
-            created_at=user_dict["created_at"]
-        )
     
     return Token(access_token=access_token, token_type="bearer", user=user)
 
