@@ -19,6 +19,7 @@ interface AuthContextType {
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, nome: string) => Promise<void>;
+  loginWithGoogle: (email: string, nome: string, googleId: string, photoUrl?: string) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -90,6 +91,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const loginWithGoogle = async (email: string, nome: string, googleId: string, photoUrl?: string) => {
+    try {
+      const response = await axios.post(`${BACKEND_URL}/api/auth/google`, {
+        email,
+        nome,
+        google_id: googleId,
+        foto_url: photoUrl
+      });
+      
+      const { access_token, user: userData } = response.data;
+      
+      setToken(access_token);
+      setUser(userData);
+      
+      await AsyncStorage.setItem('token', access_token);
+      await AsyncStorage.setItem('user', JSON.stringify(userData));
+    } catch (error: any) {
+      const message = error.response?.data?.detail || 'Errore durante il login con Google';
+      throw new Error(message);
+    }
+  };
+
   const logout = async () => {
     try {
       await AsyncStorage.removeItem('token');
@@ -102,7 +125,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, isLoading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, token, isLoading, login, register, loginWithGoogle, logout }}>
       {children}
     </AuthContext.Provider>
   );
