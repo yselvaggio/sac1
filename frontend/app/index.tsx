@@ -26,8 +26,11 @@ WebBrowser.maybeCompleteAuthSession();
 
 const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
-// Google OAuth Client IDs (you need to create these in Google Cloud Console)
-const GOOGLE_WEB_CLIENT_ID = ''; // Leave empty - will use expo proxy
+// Google OAuth - Set to true only when you have configured Google Cloud Console
+const GOOGLE_AUTH_ENABLED = false;
+
+// Google OAuth Client IDs (configure in Google Cloud Console)
+const GOOGLE_WEB_CLIENT_ID = '';
 const GOOGLE_IOS_CLIENT_ID = '';
 const GOOGLE_ANDROID_CLIENT_ID = '';
 
@@ -47,12 +50,14 @@ export default function AuthScreen() {
   const [resetEmail, setResetEmail] = useState('');
   const [isResetting, setIsResetting] = useState(false);
 
-  // Google Auth Setup
-  const [request, response, promptAsync] = Google.useAuthRequest({
-    webClientId: GOOGLE_WEB_CLIENT_ID || undefined,
-    iosClientId: GOOGLE_IOS_CLIENT_ID || undefined,
-    androidClientId: GOOGLE_ANDROID_CLIENT_ID || undefined,
-  });
+  // Google Auth Setup - Only initialize if enabled
+  const [request, response, promptAsync] = Google.useAuthRequest(
+    GOOGLE_AUTH_ENABLED ? {
+      webClientId: GOOGLE_WEB_CLIENT_ID || undefined,
+      iosClientId: GOOGLE_IOS_CLIENT_ID || undefined,
+      androidClientId: GOOGLE_ANDROID_CLIENT_ID || undefined,
+    } : {}
+  );
 
   useEffect(() => {
     if (!isLoading && user) {
