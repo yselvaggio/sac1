@@ -33,17 +33,15 @@ SECRET_KEY = os.environ.get('SECRET_KEY', 'solucion-albania-club-secret-key-2025
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_DAYS = 30
 
-# Email Settings (configure these in .env)
+# Email Settings
 SMTP_HOST = os.environ.get('SMTP_HOST', 'smtp.gmail.com')
 SMTP_PORT = int(os.environ.get('SMTP_PORT', '587'))
 SMTP_USER = os.environ.get('SMTP_USER', '')
 SMTP_PASSWORD = os.environ.get('SMTP_PASSWORD', '')
 SMTP_FROM = os.environ.get('SMTP_FROM', 'noreply@solucionalbania.club')
 
-# Create the main app without a prefix
+# Create the main app
 app = FastAPI()
-
-# Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
 
 # ============== MODELS ==============
@@ -71,16 +69,12 @@ class PasswordResetRequest(BaseModel):
 class PasswordResetResponse(BaseModel):
     message: str
     email_sent: bool
-    temp_password: Optional[str] = None  # Only shown if email not configured
+    temp_password: Optional[str] = None
 
 class Token(BaseModel):
     access_token: str
     token_type: str
     user: User
-
-class UserUpdate(BaseModel):
-    nome: Optional[str] = None
-    tipo: Optional[str] = None
 
 class PartnerOffer(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
@@ -89,6 +83,9 @@ class PartnerOffer(BaseModel):
     azienda: str
     immagine_url: Optional[str] = None
     sconto: Optional[str] = None
+    email_contatto: Optional[str] = None
+    telefono_contatto: Optional[str] = None
+    indirizzo: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 class PartnerOfferCreate(BaseModel):
@@ -97,6 +94,15 @@ class PartnerOfferCreate(BaseModel):
     azienda: str
     immagine_url: Optional[str] = None
     sconto: Optional[str] = None
+    email_contatto: Optional[str] = None
+    telefono_contatto: Optional[str] = None
+    indirizzo: Optional[str] = None
+
+class ContactMessage(BaseModel):
+    offer_id: str
+    sender_name: str
+    sender_email: str
+    message: str
 
 class CommunityPost(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
@@ -127,24 +133,17 @@ def get_password_hash(password: str) -> str:
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     to_encode = data.copy()
-    if expires_delta:
-        expire = datetime.utcnow() + expires_delta
-    else:
-        expire = datetime.utcnow() + timedelta(days=ACCESS_TOKEN_EXPIRE_DAYS)
+    expire = datetime.utcnow() + (expires_delta or timedelta(days=ACCESS_TOKEN_EXPIRE_DAYS))
     to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-    return encoded_jwt
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 def generate_temp_password(length: int = 10) -> str:
-    """Generate a random temporary password"""
     chars = string.ascii_letters + string.digits
     return ''.join(random.choice(chars) for _ in range(length))
 
 async def send_password_email(email: str, nome: str, new_password: str) -> bool:
-    """Send password reset email"""
     if not SMTP_USER or not SMTP_PASSWORD:
         return False
-    
     try:
         message = MIMEMultipart("alternative")
         message["From"] = SMTP_FROM
@@ -152,62 +151,39 @@ async def send_password_email(email: str, nome: str, new_password: str) -> bool:
         message["Subject"] = "Solucion Albania Club - Nuova Password"
         
         html = f"""
-        <html>
-        <body style="font-family: Arial, sans-serif; background-color: #1a1a1a; color: #ffffff; padding: 20px;">
-            <div style="max-width: 600px; margin: 0 auto; background-color: #2a2a2a; border-radius: 10px; padding: 30px;">
-                <h1 style="color: #FFD700; text-align: center;">Solucion Albania Club</h1>
-                <p>Ciao <strong>{nome}</strong>,</p>
-                <p>Hai richiesto il recupero della password. Ecco la tua nuova password temporanea:</p>
-                <div style="background-color: #8B0000; padding: 15px; border-radius: 5px; text-align: center; margin: 20px 0;">
-                    <h2 style="color: #FFD700; margin: 0;">{new_password}</h2>
-                </div>
-                <p>Ti consigliamo di cambiare questa password dopo il primo accesso.</p>
-                <p style="color: #888;">Se non hai richiesto tu questa email, ignora questo messaggio.</p>
-                <hr style="border-color: #444;">
-                <p style="text-align: center; color: #888; font-size: 12px;">
-                    Solucion Albania Club - Community italiana in Albania
-                </p>
+        <html><body style="font-family: Arial; background: #1a1a1a; color: #fff; padding: 20px;">
+        <div style="max-width: 600px; margin: 0 auto; background: #2a2a2a; border-radius: 10px; padding: 30px;">
+            <h1 style="color: #FFD700; text-align: center;">Solucion Albania Club</h1>
+            <p>Ciao <strong>{nome}</strong>,</p>
+            <p>La tua nuova password temporanea:</p>
+            <div style="background: #8B0000; padding: 15px; border-radius: 5px; text-align: center;">
+                <h2 style="color: #FFD700;">{new_password}</h2>
             </div>
-        </body>
-        </html>
+            <p style="color: #888;">Se non hai richiesto questa email, ignorala.</p>
+        </div></body></html>
         """
-        
         message.attach(MIMEText(html, "html"))
         
-        await aiosmtplib.send(
-            message,
-            hostname=SMTP_HOST,
-            port=SMTP_PORT,
-            username=SMTP_USER,
-            password=SMTP_PASSWORD,
-            start_tls=True
-        )
+        await aiosmtplib.send(message, hostname=SMTP_HOST, port=SMTP_PORT,
+                              username=SMTP_USER, password=SMTP_PASSWORD, start_tls=True)
         return True
     except Exception as e:
-        logger.error(f"Failed to send email: {e}")
+        logger.error(f"Email error: {e}")
         return False
 
 # ============== AUTH ENDPOINTS ==============
 
 @api_router.post("/auth/register", response_model=Token)
 async def register(user_data: UserRegister):
-    """Register a new user with email and password"""
     existing = await db.users.find_one({"email": user_data.email.lower()})
     if existing:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email gia registrata"
-        )
+        raise HTTPException(status_code=400, detail="Email gia registrata")
     
     if len(user_data.password) < 6:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="La password deve avere almeno 6 caratteri"
-        )
+        raise HTTPException(status_code=400, detail="La password deve avere almeno 6 caratteri")
     
     user_id = str(uuid.uuid4())
     member_id = f"#{str(uuid.uuid4())[:6].upper()}"
-    hashed_password = get_password_hash(user_data.password)
     
     user_dict = {
         "id": user_id,
@@ -215,104 +191,62 @@ async def register(user_data: UserRegister):
         "nome": user_data.nome,
         "tipo": "utente",
         "member_id": member_id,
-        "hashed_password": hashed_password,
+        "hashed_password": get_password_hash(user_data.password),
         "created_at": datetime.utcnow()
     }
     
     await db.users.insert_one(user_dict)
-    
     access_token = create_access_token(data={"sub": user_id, "email": user_data.email.lower()})
     
-    user = User(
-        id=user_id,
-        email=user_data.email.lower(),
-        nome=user_data.nome,
-        tipo="utente",
-        member_id=member_id,
-        created_at=user_dict["created_at"]
-    )
-    
-    return Token(access_token=access_token, token_type="bearer", user=user)
+    return Token(access_token=access_token, token_type="bearer", user=User(
+        id=user_id, email=user_data.email.lower(), nome=user_data.nome,
+        tipo="utente", member_id=member_id, created_at=user_dict["created_at"]
+    ))
 
 @api_router.post("/auth/login", response_model=Token)
 async def login(credentials: UserLogin):
-    """Login with email and password"""
     user_doc = await db.users.find_one({"email": credentials.email.lower()})
     
-    if not user_doc:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Email o password non corretti"
-        )
-    
-    if not verify_password(credentials.password, user_doc.get("hashed_password", "")):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Email o password non corretti"
-        )
+    if not user_doc or not verify_password(credentials.password, user_doc.get("hashed_password", "")):
+        raise HTTPException(status_code=401, detail="Email o password non corretti")
     
     access_token = create_access_token(data={"sub": user_doc["id"], "email": user_doc["email"]})
     
-    user = User(
-        id=user_doc["id"],
-        email=user_doc["email"],
-        nome=user_doc["nome"],
-        tipo=user_doc.get("tipo", "utente"),
-        member_id=user_doc.get("member_id", "#000000"),
+    return Token(access_token=access_token, token_type="bearer", user=User(
+        id=user_doc["id"], email=user_doc["email"], nome=user_doc["nome"],
+        tipo=user_doc.get("tipo", "utente"), member_id=user_doc.get("member_id", "#000000"),
         created_at=user_doc.get("created_at", datetime.utcnow())
-    )
-    
-    return Token(access_token=access_token, token_type="bearer", user=user)
+    ))
 
 @api_router.post("/auth/reset-password", response_model=PasswordResetResponse)
 async def reset_password(request: PasswordResetRequest):
-    """Reset password and send new one via email"""
     user_doc = await db.users.find_one({"email": request.email.lower()})
     
     if not user_doc:
-        # Don't reveal if email exists for security
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Email non trovata nel sistema"
-        )
+        raise HTTPException(status_code=404, detail="Email non trovata nel sistema")
     
-    # Generate new temporary password
     new_password = generate_temp_password(10)
-    hashed_password = get_password_hash(new_password)
-    
-    # Update password in database
     await db.users.update_one(
         {"email": request.email.lower()},
-        {"$set": {"hashed_password": hashed_password}}
+        {"$set": {"hashed_password": get_password_hash(new_password)}}
     )
     
-    # Try to send email
-    email_sent = await send_password_email(
-        request.email.lower(),
-        user_doc.get("nome", "Utente"),
-        new_password
-    )
+    email_sent = await send_password_email(request.email.lower(), user_doc.get("nome", "Utente"), new_password)
     
     if email_sent:
-        return PasswordResetResponse(
-            message="Nuova password inviata via email",
-            email_sent=True
-        )
+        return PasswordResetResponse(message="Nuova password inviata via email", email_sent=True)
     else:
-        # If email not configured, return password directly (for development)
         return PasswordResetResponse(
             message="Email non configurata. Ecco la tua nuova password temporanea:",
-            email_sent=False,
-            temp_password=new_password
+            email_sent=False, temp_password=new_password
         )
 
 @api_router.get("/auth/verify")
 async def verify_token(token: str):
-    """Verify JWT token and return user data"""
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         user_id = payload.get("sub")
-        if user_id is None:
+        if not user_id:
             raise HTTPException(status_code=401, detail="Token non valido")
         
         user_doc = await db.users.find_one({"id": user_id})
@@ -320,11 +254,8 @@ async def verify_token(token: str):
             raise HTTPException(status_code=401, detail="Utente non trovato")
         
         return User(
-            id=user_doc["id"],
-            email=user_doc["email"],
-            nome=user_doc["nome"],
-            tipo=user_doc.get("tipo", "utente"),
-            member_id=user_doc.get("member_id", "#000000"),
+            id=user_doc["id"], email=user_doc["email"], nome=user_doc["nome"],
+            tipo=user_doc.get("tipo", "utente"), member_id=user_doc.get("member_id", "#000000"),
             created_at=user_doc.get("created_at", datetime.utcnow())
         )
     except JWTError:
@@ -336,6 +267,13 @@ async def verify_token(token: str):
 async def get_partner_offers():
     offers = await db.partner_offers.find().sort("created_at", -1).to_list(100)
     return [PartnerOffer(**offer) for offer in offers]
+
+@api_router.get("/partner-offers/{offer_id}", response_model=PartnerOffer)
+async def get_partner_offer(offer_id: str):
+    offer = await db.partner_offers.find_one({"id": offer_id})
+    if not offer:
+        raise HTTPException(status_code=404, detail="Offerta non trovata")
+    return PartnerOffer(**offer)
 
 @api_router.post("/partner-offers", response_model=PartnerOffer)
 async def create_partner_offer(offer: PartnerOfferCreate):
@@ -349,6 +287,27 @@ async def delete_partner_offer(offer_id: str):
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Offerta non trovata")
     return {"message": "Offerta eliminata"}
+
+@api_router.post("/partner-offers/{offer_id}/contact")
+async def contact_partner(offer_id: str, message: ContactMessage):
+    """Send a contact message to the partner"""
+    offer = await db.partner_offers.find_one({"id": offer_id})
+    if not offer:
+        raise HTTPException(status_code=404, detail="Offerta non trovata")
+    
+    # Store message in database
+    contact_msg = {
+        "id": str(uuid.uuid4()),
+        "offer_id": offer_id,
+        "azienda": offer.get("azienda"),
+        "sender_name": message.sender_name,
+        "sender_email": message.sender_email,
+        "message": message.message,
+        "created_at": datetime.utcnow()
+    }
+    await db.contact_messages.insert_one(contact_msg)
+    
+    return {"message": "Messaggio inviato con successo"}
 
 # ============== COMMUNITY BOARD ENDPOINTS ==============
 
@@ -380,7 +339,6 @@ async def root():
 async def health_check():
     return {"status": "healthy"}
 
-# Include the router in the main app
 app.include_router(api_router)
 
 app.add_middleware(
@@ -391,10 +349,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 @app.on_event("shutdown")
