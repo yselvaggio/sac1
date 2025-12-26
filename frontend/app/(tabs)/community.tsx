@@ -123,6 +123,14 @@ export default function CommunityScreen() {
     }
   };
 
+  const handleCall = (phone: string) => {
+    Linking.openURL(`tel:${phone}`);
+  };
+
+  const handleEmail = (email: string) => {
+    Linking.openURL(`mailto:${email}`);
+  };
+
   const renderPost = ({ item }: { item: CommunityPost }) => (
     <View style={styles.postCard}>
       <View style={styles.postHeader}>
@@ -145,6 +153,41 @@ export default function CommunityScreen() {
       
       <Text style={styles.postTitle}>{item.titolo}</Text>
       <Text style={styles.postBody}>{item.corpo}</Text>
+
+      {/* Contact Details Section */}
+      {(item.email || item.telefono || item.citta) && (
+        <View style={styles.contactSection}>
+          <View style={styles.contactDivider} />
+          <Text style={styles.contactHeader}>Contatta l'inserzionista</Text>
+          
+          {item.citta && (
+            <View style={styles.contactRow}>
+              <Ionicons name="location-outline" size={16} color={COLORS.textMuted} />
+              <Text style={styles.contactText}>{item.citta}</Text>
+            </View>
+          )}
+          
+          {item.telefono && (
+            <TouchableOpacity 
+              style={styles.contactRow}
+              onPress={() => handleCall(item.telefono!)}
+            >
+              <Ionicons name="call-outline" size={16} color={COLORS.accent} />
+              <Text style={styles.contactLink}>{item.telefono}</Text>
+            </TouchableOpacity>
+          )}
+          
+          {item.email && (
+            <TouchableOpacity 
+              style={styles.contactRow}
+              onPress={() => handleEmail(item.email!)}
+            >
+              <Ionicons name="mail-outline" size={16} color={COLORS.accent} />
+              <Text style={styles.contactLink}>{item.email}</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
     </View>
   );
 
