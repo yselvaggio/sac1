@@ -21,9 +21,6 @@
       "ios": {
         "resourceClass": "m-medium"
       },
-      "env": {
-        "NODE_ENV": "production"
-      },
       "node": "20.18.0"
     }
   },
