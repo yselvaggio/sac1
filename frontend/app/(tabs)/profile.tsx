@@ -30,12 +30,9 @@ export default function ProfileScreen() {
           onPress: async () => {
             try {
               await logout();
-              // Force navigation to login
-              router.dismissAll();
-              router.replace('/');
+              // Navigation will be handled automatically by _layout.tsx
             } catch (error) {
               console.error('Logout error:', error);
-              router.replace('/');
             }
           },
         },
