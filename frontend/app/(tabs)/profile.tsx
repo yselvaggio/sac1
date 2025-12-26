@@ -10,13 +10,14 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-// Navigation handled by root _layout.tsx
+import { useRouter } from 'expo-router';
 import QRCode from 'react-native-qrcode-svg';
 import { useAuth } from '../../src/context/AuthContext';
 import { COLORS, SHADOWS } from '../../src/constants/theme';
 
 export default function ProfileScreen() {
   const { user, logout } = useAuth();
+  const router = useRouter();
 
   const handleLogout = async () => {
     Alert.alert(
@@ -30,15 +31,31 @@ export default function ProfileScreen() {
           onPress: async () => {
             try {
               await logout();
-              // Navigation will be handled automatically by _layout.tsx
+              // Force navigation to login screen
+              setTimeout(() => {
+                router.replace('/');
+              }, 100);
             } catch (error) {
               console.error('Logout error:', error);
+              // Even if error, try to navigate
+              router.replace('/');
             }
           },
         },
       ]
     );
   };
+
+  // If no user, don't render profile content
+  if (!user) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Disconnessione in corso...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
