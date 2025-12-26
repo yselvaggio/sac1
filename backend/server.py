@@ -76,6 +76,19 @@ class Token(BaseModel):
     token_type: str
     user: User
 
+# Day News Model (Admin announcements)
+class DayNews(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    titolo: str
+    contenuto: str
+    importante: bool = False
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+class DayNewsCreate(BaseModel):
+    titolo: str
+    contenuto: str
+    importante: bool = False
+
 class PartnerOffer(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     titolo: str
