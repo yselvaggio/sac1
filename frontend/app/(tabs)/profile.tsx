@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { router, useRootNavigationState } from 'expo-router';
+// Navigation handled by root _layout.tsx
 import QRCode from 'react-native-qrcode-svg';
 import { useAuth } from '../../src/context/AuthContext';
 import { COLORS, SHADOWS } from '../../src/constants/theme';
