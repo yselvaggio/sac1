@@ -46,53 +46,6 @@ export default function AuthScreen() {
     }
   }, [user, isLoading]);
 
-  useEffect(() => {
-    handleGoogleResponse();
-  }, [response]);
-
-  const handleGoogleResponse = async () => {
-    if (response?.type === 'success') {
-      setIsGoogleLoading(true);
-      try {
-        const { authentication } = response;
-        if (authentication?.accessToken) {
-          // Get user info from Google
-          const userInfoResponse = await fetch(
-            'https://www.googleapis.com/userinfo/v2/me',
-            {
-              headers: { Authorization: `Bearer ${authentication.accessToken}` },
-            }
-          );
-          const userInfo = await userInfoResponse.json();
-          
-          // Login or register with our backend
-          await loginWithGoogle(
-            userInfo.email,
-            userInfo.name || userInfo.email.split('@')[0],
-            userInfo.id,
-            userInfo.picture
-          );
-        }
-      } catch (error: any) {
-        console.error('Google auth error:', error);
-        Alert.alert('Errore', error.message || 'Errore durante il login con Google');
-      } finally {
-        setIsGoogleLoading(false);
-      }
-    }
-  };
-
-  const handleGoogleLogin = async () => {
-    try {
-      setIsGoogleLoading(true);
-      await promptAsync();
-    } catch (error) {
-      console.error('Google prompt error:', error);
-      Alert.alert('Errore', 'Impossibile avviare il login con Google');
-      setIsGoogleLoading(false);
-    }
-  };
-
   const handleSubmit = async () => {
     if (!email.trim()) {
       Alert.alert('Errore', 'Inserisci la tua email');
