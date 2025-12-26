@@ -205,53 +205,102 @@ export default function CommunityScreen() {
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.modalOverlay}
         >
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Nuovo Annuncio</Text>
+          <ScrollView contentContainerStyle={styles.modalScrollContent}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Nuovo Annuncio</Text>
+                <TouchableOpacity
+                  onPress={() => setIsModalVisible(false)}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  <Ionicons name="close" size={24} color={COLORS.textPrimary} />
+                </TouchableOpacity>
+              </View>
+
+              <Text style={styles.inputLabel}>Titolo *</Text>
+              <TextInput
+                style={styles.titleInput}
+                placeholder="Titolo annuncio"
+                placeholderTextColor={COLORS.textMuted}
+                value={newTitle}
+                onChangeText={setNewTitle}
+                maxLength={100}
+              />
+
+              <Text style={styles.inputLabel}>Contenuto *</Text>
+              <TextInput
+                style={styles.bodyInput}
+                placeholder="Scrivi il tuo annuncio..."
+                placeholderTextColor={COLORS.textMuted}
+                value={newBody}
+                onChangeText={setNewBody}
+                multiline
+                numberOfLines={4}
+                textAlignVertical="top"
+                maxLength={1000}
+              />
+
+              <Text style={styles.sectionLabel}>Informazioni di Contatto</Text>
+
+              <Text style={styles.inputLabel}>Nome *</Text>
+              <TextInput
+                style={styles.contactInput}
+                placeholder="Il tuo nome"
+                placeholderTextColor={COLORS.textMuted}
+                value={newNome}
+                onChangeText={setNewNome}
+                maxLength={100}
+              />
+
+              <Text style={styles.inputLabel}>Email *</Text>
+              <TextInput
+                style={styles.contactInput}
+                placeholder="La tua email"
+                placeholderTextColor={COLORS.textMuted}
+                value={newEmail}
+                onChangeText={setNewEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                maxLength={100}
+              />
+
+              <Text style={styles.inputLabel}>Telefono *</Text>
+              <TextInput
+                style={styles.contactInput}
+                placeholder="Il tuo numero di telefono"
+                placeholderTextColor={COLORS.textMuted}
+                value={newTelefono}
+                onChangeText={setNewTelefono}
+                keyboardType="phone-pad"
+                maxLength={20}
+              />
+
+              <Text style={styles.inputLabel}>Città *</Text>
+              <TextInput
+                style={styles.contactInput}
+                placeholder="La tua città"
+                placeholderTextColor={COLORS.textMuted}
+                value={newCitta}
+                onChangeText={setNewCitta}
+                maxLength={100}
+              />
+
               <TouchableOpacity
-                onPress={() => setIsModalVisible(false)}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                style={[
+                  styles.submitButton,
+                  isSubmitting && styles.submitButtonDisabled,
+                ]}
+                onPress={handleCreatePost}
+                disabled={isSubmitting}
               >
-                <Ionicons name="close" size={24} color={COLORS.textPrimary} />
+                {isSubmitting ? (
+                  <ActivityIndicator color={COLORS.background} />
+                ) : (
+                  <Text style={styles.submitButtonText}>Pubblica</Text>
+                )}
               </TouchableOpacity>
             </View>
-
-            <TextInput
-              style={styles.titleInput}
-              placeholder="Titolo annuncio"
-              placeholderTextColor={COLORS.textMuted}
-              value={newTitle}
-              onChangeText={setNewTitle}
-              maxLength={100}
-            />
-
-            <TextInput
-              style={styles.bodyInput}
-              placeholder="Scrivi il tuo annuncio..."
-              placeholderTextColor={COLORS.textMuted}
-              value={newBody}
-              onChangeText={setNewBody}
-              multiline
-              numberOfLines={6}
-              textAlignVertical="top"
-              maxLength={1000}
-            />
-
-            <TouchableOpacity
-              style={[
-                styles.submitButton,
-                isSubmitting && styles.submitButtonDisabled,
-              ]}
-              onPress={handleCreatePost}
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? (
-                <ActivityIndicator color={COLORS.background} />
-              ) : (
-                <Text style={styles.submitButtonText}>Pubblica</Text>
-              )}
-            </TouchableOpacity>
-          </View>
+          </ScrollView>
         </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>
