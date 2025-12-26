@@ -4,6 +4,8 @@ from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
+import random
+import string
 from pathlib import Path
 from pydantic import BaseModel, Field, EmailStr
 from typing import List, Optional
@@ -11,6 +13,9 @@ import uuid
 from datetime import datetime, timedelta
 from passlib.context import CryptContext
 from jose import JWTError, jwt
+import aiosmtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -27,6 +32,13 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 SECRET_KEY = os.environ.get('SECRET_KEY', 'solucion-albania-club-secret-key-2025')
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_DAYS = 30
+
+# Email Settings (configure these in .env)
+SMTP_HOST = os.environ.get('SMTP_HOST', 'smtp.gmail.com')
+SMTP_PORT = int(os.environ.get('SMTP_PORT', '587'))
+SMTP_USER = os.environ.get('SMTP_USER', '')
+SMTP_PASSWORD = os.environ.get('SMTP_PASSWORD', '')
+SMTP_FROM = os.environ.get('SMTP_FROM', 'noreply@solucionalbania.club')
 
 # Create the main app without a prefix
 app = FastAPI()
@@ -52,6 +64,14 @@ class UserRegister(BaseModel):
 class UserLogin(BaseModel):
     email: EmailStr
     password: str
+
+class PasswordResetRequest(BaseModel):
+    email: EmailStr
+
+class PasswordResetResponse(BaseModel):
+    message: str
+    email_sent: bool
+    temp_password: Optional[str] = None  # Only shown if email not configured
 
 class Token(BaseModel):
     access_token: str
@@ -114,6 +134,58 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
+
+def generate_temp_password(length: int = 10) -> str:
+    """Generate a random temporary password"""
+    chars = string.ascii_letters + string.digits
+    return ''.join(random.choice(chars) for _ in range(length))
+
+async def send_password_email(email: str, nome: str, new_password: str) -> bool:
+    """Send password reset email"""
+    if not SMTP_USER or not SMTP_PASSWORD:
+        return False
+    
+    try:
+        message = MIMEMultipart("alternative")
+        message["From"] = SMTP_FROM
+        message["To"] = email
+        message["Subject"] = "Solucion Albania Club - Nuova Password"
+        
+        html = f"""
+        <html>
+        <body style="font-family: Arial, sans-serif; background-color: #1a1a1a; color: #ffffff; padding: 20px;">
+            <div style="max-width: 600px; margin: 0 auto; background-color: #2a2a2a; border-radius: 10px; padding: 30px;">
+                <h1 style="color: #FFD700; text-align: center;">Solucion Albania Club</h1>
+                <p>Ciao <strong>{nome}</strong>,</p>
+                <p>Hai richiesto il recupero della password. Ecco la tua nuova password temporanea:</p>
+                <div style="background-color: #8B0000; padding: 15px; border-radius: 5px; text-align: center; margin: 20px 0;">
+                    <h2 style="color: #FFD700; margin: 0;">{new_password}</h2>
+                </div>
+                <p>Ti consigliamo di cambiare questa password dopo il primo accesso.</p>
+                <p style="color: #888;">Se non hai richiesto tu questa email, ignora questo messaggio.</p>
+                <hr style="border-color: #444;">
+                <p style="text-align: center; color: #888; font-size: 12px;">
+                    Solucion Albania Club - Community italiana in Albania
+                </p>
+            </div>
+        </body>
+        </html>
+        """
+        
+        message.attach(MIMEText(html, "html"))
+        
+        await aiosmtplib.send(
+            message,
+            hostname=SMTP_HOST,
+            port=SMTP_PORT,
+            username=SMTP_USER,
+            password=SMTP_PASSWORD,
+            start_tls=True
+        )
+        return True
+    except Exception as e:
+        logger.error(f"Failed to send email: {e}")
+        return False
 
 # ============== AUTH ENDPOINTS ==============
 
@@ -191,6 +263,48 @@ async def login(credentials: UserLogin):
     )
     
     return Token(access_token=access_token, token_type="bearer", user=user)
+
+@api_router.post("/auth/reset-password", response_model=PasswordResetResponse)
+async def reset_password(request: PasswordResetRequest):
+    """Reset password and send new one via email"""
+    user_doc = await db.users.find_one({"email": request.email.lower()})
+    
+    if not user_doc:
+        # Don't reveal if email exists for security
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Email non trovata nel sistema"
+        )
+    
+    # Generate new temporary password
+    new_password = generate_temp_password(10)
+    hashed_password = get_password_hash(new_password)
+    
+    # Update password in database
+    await db.users.update_one(
+        {"email": request.email.lower()},
+        {"$set": {"hashed_password": hashed_password}}
+    )
+    
+    # Try to send email
+    email_sent = await send_password_email(
+        request.email.lower(),
+        user_doc.get("nome", "Utente"),
+        new_password
+    )
+    
+    if email_sent:
+        return PasswordResetResponse(
+            message="Nuova password inviata via email",
+            email_sent=True
+        )
+    else:
+        # If email not configured, return password directly (for development)
+        return PasswordResetResponse(
+            message="Email non configurata. Ecco la tua nuova password temporanea:",
+            email_sent=False,
+            temp_password=new_password
+        )
 
 @api_router.get("/auth/verify")
 async def verify_token(token: str):
