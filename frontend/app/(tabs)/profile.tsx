@@ -373,4 +373,13 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
     textAlign: 'center',
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 16,
+    color: COLORS.textSecondary,
+  },
 });
