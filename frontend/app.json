@@ -40,6 +40,13 @@
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "b48d77a9-ac7b-492f-ada7-df5163933d56"
+      }
+    },
+    "owner": "yselvaggio"
   }
 }
