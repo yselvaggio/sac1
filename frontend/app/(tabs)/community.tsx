@@ -28,6 +28,9 @@ interface CommunityPost {
   autore_nome: string;
   titolo: string;
   corpo: string;
+  email?: string;
+  telefono?: string;
+  citta?: string;
   created_at: string;
 }
 
