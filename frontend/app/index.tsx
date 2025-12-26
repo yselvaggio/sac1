@@ -235,11 +235,13 @@ export default function AuthScreen() {
               </TouchableOpacity>
             )}
 
-            <TouchableOpacity
-              style={styles.submitButton}
+            <Pressable
+              style={({ pressed }) => [
+                styles.submitButton,
+                pressed && { opacity: 0.7 }
+              ]}
               onPress={handleSubmit}
               disabled={isSubmitting}
-              activeOpacity={0.7}
               accessibilityRole="button"
             >
               <View style={styles.buttonGradient}>
@@ -251,7 +253,7 @@ export default function AuthScreen() {
                   </Text>
                 )}
               </View>
-            </TouchableOpacity>
+            </Pressable>
 
             <TouchableOpacity
               style={styles.switchButton}
