@@ -322,6 +322,29 @@ async def contact_partner(offer_id: str, message: ContactMessage):
     
     return {"message": "Messaggio inviato con successo"}
 
+# ============== DAY NEWS ENDPOINTS (Admin announcements) ==============
+
+@api_router.get("/day-news", response_model=List[DayNews])
+async def get_day_news():
+    """Get all day news announcements"""
+    news = await db.day_news.find().sort("created_at", -1).to_list(20)
+    return [DayNews(**n) for n in news]
+
+@api_router.post("/day-news", response_model=DayNews)
+async def create_day_news(news: DayNewsCreate):
+    """Create a new day news announcement (admin only)"""
+    news_obj = DayNews(**news.dict())
+    await db.day_news.insert_one(news_obj.dict())
+    return news_obj
+
+@api_router.delete("/day-news/{news_id}")
+async def delete_day_news(news_id: str):
+    """Delete a day news announcement"""
+    result = await db.day_news.delete_one({"id": news_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="News non trovata")
+    return {"message": "News eliminata"}
+
 # ============== COMMUNITY BOARD ENDPOINTS ==============
 
 @api_router.get("/community-posts", response_model=List[CommunityPost])
