@@ -436,4 +436,72 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
     marginTop: 2,
   },
+  // Day News Styles
+  newsLoading: {
+    padding: 40,
+    alignItems: 'center',
+  },
+  newsContainer: {
+    marginBottom: 24,
+  },
+  newsCard: {
+    backgroundColor: COLORS.surface,
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
+    borderLeftWidth: 4,
+    borderLeftColor: COLORS.accent,
+    ...SHADOWS.small,
+  },
+  newsCardImportant: {
+    borderLeftColor: COLORS.error,
+    backgroundColor: 'rgba(139, 0, 0, 0.1)',
+  },
+  newsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  importantBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.error,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  importantText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: 'bold',
+    marginLeft: 4,
+  },
+  newsDate: {
+    fontSize: 12,
+    color: COLORS.textMuted,
+  },
+  newsTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: COLORS.textPrimary,
+    marginBottom: 6,
+  },
+  newsContent: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
+    lineHeight: 20,
+  },
+  noNewsContainer: {
+    backgroundColor: COLORS.surface,
+    borderRadius: 16,
+    padding: 32,
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  noNewsText: {
+    fontSize: 14,
+    color: COLORS.textMuted,
+    marginTop: 12,
+  },
 });
