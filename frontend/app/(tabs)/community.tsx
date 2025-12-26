@@ -71,16 +71,43 @@ export default function CommunityScreen() {
       return;
     }
 
+    if (!newNome.trim()) {
+      Alert.alert('Errore', 'Inserisci il tuo nome');
+      return;
+    }
+
+    if (!newEmail.trim()) {
+      Alert.alert('Errore', 'Inserisci la tua email');
+      return;
+    }
+
+    if (!newTelefono.trim()) {
+      Alert.alert('Errore', 'Inserisci il tuo telefono');
+      return;
+    }
+
+    if (!newCitta.trim()) {
+      Alert.alert('Errore', 'Inserisci la tua città');
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       await axios.post(`${BACKEND_URL}/api/community-posts`, {
         autore_id: user?.id,
-        autore_nome: user?.nome,
+        autore_nome: newNome.trim(),
         titolo: newTitle.trim(),
         corpo: newBody.trim(),
+        email: newEmail.trim(),
+        telefono: newTelefono.trim(),
+        citta: newCitta.trim(),
       });
       setNewTitle('');
       setNewBody('');
+      setNewNome('');
+      setNewEmail('');
+      setNewTelefono('');
+      setNewCitta('');
       setIsModalVisible(false);
       fetchPosts();
       Alert.alert('Successo', 'Annuncio pubblicato!');
