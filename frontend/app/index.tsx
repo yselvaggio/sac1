@@ -324,31 +324,35 @@ export default function AuthScreen() {
               </View>
             </Pressable>
 
-            {/* Google Login Button */}
-            <View style={styles.dividerContainer}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>oppure</Text>
-              <View style={styles.dividerLine} />
-            </View>
+            {/* Google Login Button - Only show when configured */}
+            {GOOGLE_AUTH_ENABLED && (
+              <>
+                <View style={styles.dividerContainer}>
+                  <View style={styles.dividerLine} />
+                  <Text style={styles.dividerText}>oppure</Text>
+                  <View style={styles.dividerLine} />
+                </View>
 
-            <TouchableOpacity
-              style={styles.googleButton}
-              onPress={handleGoogleLogin}
-              disabled={isGoogleLoading || !request}
-            >
-              {isGoogleLoading ? (
-                <ActivityIndicator color={COLORS.textPrimary} />
-              ) : (
-                <>
-                  <View style={styles.googleIconContainer}>
-                    <Text style={styles.googleIcon}>G</Text>
-                  </View>
-                  <Text style={styles.googleButtonText}>
-                    Continua con Google
-                  </Text>
-                </>
-              )}
-            </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.googleButton}
+                  onPress={handleGoogleLogin}
+                  disabled={isGoogleLoading || !request}
+                >
+                  {isGoogleLoading ? (
+                    <ActivityIndicator color={COLORS.textPrimary} />
+                  ) : (
+                    <>
+                      <View style={styles.googleIconContainer}>
+                        <Text style={styles.googleIcon}>G</Text>
+                      </View>
+                      <Text style={styles.googleButtonText}>
+                        Continua con Google
+                      </Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              </>
+            )}
 
             <TouchableOpacity
               style={styles.switchButton}
