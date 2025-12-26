@@ -1,0 +1,13 @@
+# Ignore local credentials (already uploaded)
+.eas-credentials/
+
+# Ignore development files
+.expo/
+node_modules/.cache/
+
+# Ignore test files
+__tests__/
+*.test.js
+*.test.ts
+*.spec.js
+*.spec.ts
