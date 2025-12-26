@@ -7,7 +7,6 @@
     "icon": "./assets/images/icon.png",
     "scheme": "solucionalbania",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.solucionalbania.club"
@@ -17,7 +16,6 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#1a1a1a"
       },
-      "edgeToEdgeEnabled": true,
       "package": "com.solucionalbania.club",
       "versionCode": 1
     },
