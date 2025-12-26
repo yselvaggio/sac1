@@ -445,6 +445,36 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     lineHeight: 20,
   },
+  contactSection: {
+    marginTop: 16,
+  },
+  contactDivider: {
+    height: 1,
+    backgroundColor: COLORS.border,
+    marginBottom: 12,
+  },
+  contactHeader: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORS.accent,
+    marginBottom: 10,
+  },
+  contactRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
+  },
+  contactText: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
+    marginLeft: 8,
+  },
+  contactLink: {
+    fontSize: 14,
+    color: COLORS.accent,
+    marginLeft: 8,
+    textDecorationLine: 'underline',
+  },
   emptyState: {
     flex: 1,
     alignItems: 'center',
