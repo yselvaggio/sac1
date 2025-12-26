@@ -17,13 +17,22 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import axios from 'axios';
+import * as Google from 'expo-auth-session/providers/google';
+import * as WebBrowser from 'expo-web-browser';
 import { useAuth } from '../src/context/AuthContext';
 import { COLORS, SHADOWS } from '../src/constants/theme';
 
+WebBrowser.maybeCompleteAuthSession();
+
 const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
+// Google OAuth Client IDs (you need to create these in Google Cloud Console)
+const GOOGLE_WEB_CLIENT_ID = ''; // Leave empty - will use expo proxy
+const GOOGLE_IOS_CLIENT_ID = '';
+const GOOGLE_ANDROID_CLIENT_ID = '';
+
 export default function AuthScreen() {
-  const { user, isLoading, login, register } = useAuth();
+  const { user, isLoading, login, register, loginWithGoogle } = useAuth();
   const [isLoginMode, setIsLoginMode] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -31,17 +40,72 @@ export default function AuthScreen() {
   const [nome, setNome] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   
   // Password Reset Modal
   const [showResetModal, setShowResetModal] = useState(false);
   const [resetEmail, setResetEmail] = useState('');
   const [isResetting, setIsResetting] = useState(false);
 
+  // Google Auth Setup
+  const [request, response, promptAsync] = Google.useAuthRequest({
+    webClientId: GOOGLE_WEB_CLIENT_ID || undefined,
+    iosClientId: GOOGLE_IOS_CLIENT_ID || undefined,
+    androidClientId: GOOGLE_ANDROID_CLIENT_ID || undefined,
+  });
+
   useEffect(() => {
     if (!isLoading && user) {
       router.replace('/(tabs)');
     }
   }, [user, isLoading]);
+
+  useEffect(() => {
+    handleGoogleResponse();
+  }, [response]);
+
+  const handleGoogleResponse = async () => {
+    if (response?.type === 'success') {
+      setIsGoogleLoading(true);
+      try {
+        const { authentication } = response;
+        if (authentication?.accessToken) {
+          // Get user info from Google
+          const userInfoResponse = await fetch(
+            'https://www.googleapis.com/userinfo/v2/me',
+            {
+              headers: { Authorization: `Bearer ${authentication.accessToken}` },
+            }
+          );
+          const userInfo = await userInfoResponse.json();
+          
+          // Login or register with our backend
+          await loginWithGoogle(
+            userInfo.email,
+            userInfo.name || userInfo.email.split('@')[0],
+            userInfo.id,
+            userInfo.picture
+          );
+        }
+      } catch (error: any) {
+        console.error('Google auth error:', error);
+        Alert.alert('Errore', error.message || 'Errore durante il login con Google');
+      } finally {
+        setIsGoogleLoading(false);
+      }
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    try {
+      setIsGoogleLoading(true);
+      await promptAsync();
+    } catch (error) {
+      console.error('Google prompt error:', error);
+      Alert.alert('Errore', 'Impossibile avviare il login con Google');
+      setIsGoogleLoading(false);
+    }
+  };
 
   const handleSubmit = async () => {
     if (!email.trim()) {
