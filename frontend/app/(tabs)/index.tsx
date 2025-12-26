@@ -168,16 +168,7 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Info Section */}
-        <View style={styles.infoCard}>
-          <Ionicons name="information-circle" size={24} color={COLORS.accent} />
-          <View style={styles.infoContent}>
-            <Text style={styles.infoTitle}>Come usare la tessera</Text>
-            <Text style={styles.infoText}>
-              Mostra il QR Code ai nostri partner per ricevere sconti esclusivi. Scarica la tessera per averla sempre disponibile!
-            </Text>
-          </View>
-        </View>
+        {/* End of content */}
       </ScrollView>
     </SafeAreaView>
   );
