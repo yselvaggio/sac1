@@ -17,25 +17,16 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import axios from 'axios';
-import * as Google from 'expo-auth-session/providers/google';
-import * as WebBrowser from 'expo-web-browser';
 import { useAuth } from '../src/context/AuthContext';
 import { COLORS, SHADOWS } from '../src/constants/theme';
 
-WebBrowser.maybeCompleteAuthSession();
-
 const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
-// Google OAuth - Set to true only when you have configured Google Cloud Console
+// Google OAuth - Set to true and add Client IDs when configured
 const GOOGLE_AUTH_ENABLED = false;
 
-// Google OAuth Client IDs (configure in Google Cloud Console)
-const GOOGLE_WEB_CLIENT_ID = '';
-const GOOGLE_IOS_CLIENT_ID = '';
-const GOOGLE_ANDROID_CLIENT_ID = '';
-
 export default function AuthScreen() {
-  const { user, isLoading, login, register, loginWithGoogle } = useAuth();
+  const { user, isLoading, login, register } = useAuth();
   const [isLoginMode, setIsLoginMode] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -43,21 +34,11 @@ export default function AuthScreen() {
   const [nome, setNome] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   
   // Password Reset Modal
   const [showResetModal, setShowResetModal] = useState(false);
   const [resetEmail, setResetEmail] = useState('');
   const [isResetting, setIsResetting] = useState(false);
-
-  // Google Auth Setup - Only initialize if enabled
-  const [request, response, promptAsync] = Google.useAuthRequest(
-    GOOGLE_AUTH_ENABLED ? {
-      webClientId: GOOGLE_WEB_CLIENT_ID || undefined,
-      iosClientId: GOOGLE_IOS_CLIENT_ID || undefined,
-      androidClientId: GOOGLE_ANDROID_CLIENT_ID || undefined,
-    } : {}
-  );
 
   useEffect(() => {
     if (!isLoading && user) {
