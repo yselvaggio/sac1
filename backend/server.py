@@ -266,6 +266,54 @@ async def reset_password(request: PasswordResetRequest):
             email_sent=False, temp_password=new_password
         )
 
+@api_router.post("/auth/google", response_model=Token)
+async def google_auth(google_data: GoogleAuthRequest):
+    """Authenticate or register user with Google"""
+    email = google_data.email.lower()
+    
+    # Check if user exists
+    user_doc = await db.users.find_one({"email": email})
+    
+    if user_doc:
+        # Update Google ID if not set
+        if not user_doc.get("google_id"):
+            await db.users.update_one(
+                {"email": email},
+                {"$set": {"google_id": google_data.google_id}}
+            )
+        
+        access_token = create_access_token(data={"sub": user_doc["id"], "email": email})
+        
+        return Token(access_token=access_token, token_type="bearer", user=User(
+            id=user_doc["id"], email=email, nome=user_doc["nome"],
+            tipo=user_doc.get("tipo", "utente"), member_id=user_doc.get("member_id", "#000000"),
+            created_at=user_doc.get("created_at", datetime.utcnow())
+        ))
+    else:
+        # Create new user
+        user_id = str(uuid.uuid4())
+        member_id = f"#{str(uuid.uuid4())[:6].upper()}"
+        
+        user_dict = {
+            "id": user_id,
+            "email": email,
+            "nome": google_data.nome,
+            "tipo": "utente",
+            "member_id": member_id,
+            "google_id": google_data.google_id,
+            "foto_url": google_data.foto_url,
+            "hashed_password": "",  # No password for Google users
+            "created_at": datetime.utcnow()
+        }
+        
+        await db.users.insert_one(user_dict)
+        access_token = create_access_token(data={"sub": user_id, "email": email})
+        
+        return Token(access_token=access_token, token_type="bearer", user=User(
+            id=user_id, email=email, nome=google_data.nome,
+            tipo="utente", member_id=member_id, created_at=user_dict["created_at"]
+        ))
+
 @api_router.get("/auth/verify")
 async def verify_token(token: str):
     try:
