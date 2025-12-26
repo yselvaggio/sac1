@@ -197,6 +197,50 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
 
+        {/* Day News Section */}
+        <Text style={styles.sectionTitle}>Notizie del Giorno</Text>
+        {newsLoading ? (
+          <View style={styles.newsLoading}>
+            <ActivityIndicator size="small" color={COLORS.accent} />
+          </View>
+        ) : dayNews.length > 0 ? (
+          <View style={styles.newsContainer}>
+            {dayNews.slice(0, 3).map((news) => (
+              <View 
+                key={news.id} 
+                style={[
+                  styles.newsCard,
+                  news.importante && styles.newsCardImportant
+                ]}
+              >
+                <View style={styles.newsHeader}>
+                  {news.importante && (
+                    <View style={styles.importantBadge}>
+                      <Ionicons name="alert-circle" size={14} color="#fff" />
+                      <Text style={styles.importantText}>Importante</Text>
+                    </View>
+                  )}
+                  <Text style={styles.newsDate}>
+                    {new Date(news.created_at).toLocaleDateString('it-IT', {
+                      day: 'numeric',
+                      month: 'short',
+                    })}
+                  </Text>
+                </View>
+                <Text style={styles.newsTitle}>{news.titolo}</Text>
+                <Text style={styles.newsContent} numberOfLines={3}>
+                  {news.contenuto}
+                </Text>
+              </View>
+            ))}
+          </View>
+        ) : (
+          <View style={styles.noNewsContainer}>
+            <Ionicons name="newspaper-outline" size={40} color={COLORS.textMuted} />
+            <Text style={styles.noNewsText}>Nessuna notizia disponibile</Text>
+          </View>
+        )}
+
         {/* End of content */}
       </ScrollView>
     </SafeAreaView>
