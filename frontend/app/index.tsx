@@ -11,11 +11,15 @@ import {
   ScrollView,
   Alert,
   Image,
+  Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import axios from 'axios';
 import { useAuth } from '../src/context/AuthContext';
 import { COLORS, SHADOWS } from '../src/constants/theme';
+
+const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
 export default function AuthScreen() {
   const { user, isLoading, login, register } = useAuth();
@@ -26,6 +30,11 @@ export default function AuthScreen() {
   const [nome, setNome] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  
+  // Password Reset Modal
+  const [showResetModal, setShowResetModal] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
+  const [isResetting, setIsResetting] = useState(false);
 
   useEffect(() => {
     if (!isLoading && user) {
@@ -72,6 +81,44 @@ export default function AuthScreen() {
       Alert.alert('Errore', error.message || 'Si e verificato un errore. Riprova.');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handlePasswordReset = async () => {
+    if (!resetEmail.trim()) {
+      Alert.alert('Errore', 'Inserisci la tua email');
+      return;
+    }
+
+    setIsResetting(true);
+    try {
+      const response = await axios.post(`${BACKEND_URL}/api/auth/reset-password`, {
+        email: resetEmail.toLowerCase().trim()
+      });
+
+      const data = response.data;
+      
+      if (data.email_sent) {
+        Alert.alert(
+          'Email Inviata',
+          'Abbiamo inviato una nuova password alla tua email. Controlla la tua casella di posta.',
+          [{ text: 'OK', onPress: () => setShowResetModal(false) }]
+        );
+      } else if (data.temp_password) {
+        // Email not configured - show password directly
+        Alert.alert(
+          'Nuova Password',
+          `La tua nuova password temporanea e:\n\n${data.temp_password}\n\nAnnotala e usala per accedere.`,
+          [{ text: 'OK', onPress: () => setShowResetModal(false) }]
+        );
+      }
+      
+      setResetEmail('');
+    } catch (error: any) {
+      const message = error.response?.data?.detail || 'Errore durante il recupero password';
+      Alert.alert('Errore', message);
+    } finally {
+      setIsResetting(false);
     }
   };
 
@@ -177,6 +224,16 @@ export default function AuthScreen() {
               </View>
             )}
 
+            {/* Forgot Password Link - Only in Login Mode */}
+            {isLoginMode && (
+              <TouchableOpacity
+                style={styles.forgotButton}
+                onPress={() => setShowResetModal(true)}
+              >
+                <Text style={styles.forgotText}>Hai dimenticato la password?</Text>
+              </TouchableOpacity>
+            )}
+
             <TouchableOpacity
               style={styles.submitButton}
               onPress={handleSubmit}
@@ -214,6 +271,61 @@ export default function AuthScreen() {
           </View>
         </ScrollView>
       </View>
+
+      {/* Password Reset Modal */}
+      <Modal
+        visible={showResetModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowResetModal(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.modalOverlay}
+        >
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Recupera Password</Text>
+              <TouchableOpacity
+                onPress={() => setShowResetModal(false)}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Ionicons name="close" size={24} color={COLORS.textPrimary} />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.modalDescription}>
+              Inserisci la tua email e ti invieremo una nuova password temporanea.
+            </Text>
+
+            <View style={styles.modalInputContainer}>
+              <Ionicons name="mail-outline" size={20} color={COLORS.textSecondary} />
+              <TextInput
+                style={styles.modalInput}
+                placeholder="Email"
+                placeholderTextColor={COLORS.textMuted}
+                value={resetEmail}
+                onChangeText={setResetEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+            </View>
+
+            <TouchableOpacity
+              style={styles.modalButton}
+              onPress={handlePasswordReset}
+              disabled={isResetting}
+            >
+              {isResetting ? (
+                <ActivityIndicator color={COLORS.accent} />
+              ) : (
+                <Text style={styles.modalButtonText}>INVIA NUOVA PASSWORD</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }
@@ -276,6 +388,15 @@ const styles = StyleSheet.create({
     color: COLORS.textPrimary,
     fontSize: 16,
   },
+  forgotButton: {
+    alignItems: 'flex-end',
+    marginBottom: 8,
+    marginTop: -8,
+  },
+  forgotText: {
+    color: COLORS.accent,
+    fontSize: 14,
+  },
   submitButton: {
     marginTop: 8,
     borderRadius: 12,
@@ -310,5 +431,63 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
     fontSize: 12,
     marginBottom: 4,
+  },
+  // Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  modalContent: {
+    backgroundColor: COLORS.surface,
+    borderRadius: 20,
+    padding: 24,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: COLORS.accent,
+  },
+  modalDescription: {
+    color: COLORS.textSecondary,
+    fontSize: 14,
+    marginBottom: 20,
+    lineHeight: 20,
+  },
+  modalInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.surfaceLight,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  modalInput: {
+    flex: 1,
+    paddingVertical: 16,
+    paddingHorizontal: 12,
+    color: COLORS.textPrimary,
+    fontSize: 16,
+  },
+  modalButton: {
+    backgroundColor: COLORS.primary,
+    borderRadius: 12,
+    paddingVertical: 16,
+    alignItems: 'center',
+  },
+  modalButtonText: {
+    color: COLORS.accent,
+    fontSize: 16,
+    fontWeight: 'bold',
+    letterSpacing: 1,
   },
 });
