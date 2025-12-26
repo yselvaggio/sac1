@@ -1,7 +1,7 @@
 import React from 'react';
-import { Stack, useRouter, useSegments, useRootNavigationState } from 'expo-router';
+import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { AuthProvider, useAuth } from '../src/context/AuthContext';
 import { COLORS } from '../src/constants/theme';
 
@@ -9,29 +9,28 @@ function RootLayoutNav() {
   const { user, isLoading } = useAuth();
   const segments = useSegments();
   const router = useRouter();
-  const navigationState = useRootNavigationState();
+  const hasNavigated = useRef(false);
 
   useEffect(() => {
-    // Wait for navigation to be ready
-    if (!navigationState?.key) return;
     if (isLoading) return;
 
     const inTabsGroup = segments[0] === '(tabs)';
     
+    // User logged out - redirect to login
     if (!user && inTabsGroup) {
-      // User is not authenticated but trying to access protected routes
-      // Force navigation to login
       router.replace('/');
-    } else if (user && !inTabsGroup) {
-      // User is authenticated but on the login screen
+      hasNavigated.current = true;
+    } 
+    // User logged in - redirect to tabs
+    else if (user && !inTabsGroup && !hasNavigated.current) {
       router.replace('/(tabs)');
+      hasNavigated.current = true;
     }
-  }, [user, isLoading, segments, navigationState?.key]);
-
-  // Show nothing while loading to prevent flash
-  if (isLoading) {
-    return null;
-  }
+    // Reset navigation flag when user changes
+    else if (!user) {
+      hasNavigated.current = false;
+    }
+  }, [user, isLoading, segments]);
 
   return (
     <>
