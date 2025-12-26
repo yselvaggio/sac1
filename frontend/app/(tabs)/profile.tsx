@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useRootNavigationState } from 'expo-router';
 import QRCode from 'react-native-qrcode-svg';
 import { useAuth } from '../../src/context/AuthContext';
 import { COLORS, SHADOWS } from '../../src/constants/theme';
@@ -18,7 +18,7 @@ import { COLORS, SHADOWS } from '../../src/constants/theme';
 export default function ProfileScreen() {
   const { user, logout } = useAuth();
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     Alert.alert(
       'Esci',
       'Sei sicuro di voler uscire dal tuo account?',
@@ -28,8 +28,15 @@ export default function ProfileScreen() {
           text: 'Esci',
           style: 'destructive',
           onPress: async () => {
-            await logout();
-            router.replace('/');
+            try {
+              await logout();
+              // Force navigation to login
+              router.dismissAll();
+              router.replace('/');
+            } catch (error) {
+              console.error('Logout error:', error);
+              router.replace('/');
+            }
           },
         },
       ]
