@@ -34,6 +34,23 @@ interface DayNews {
 export default function HomeScreen() {
   const { user } = useAuth();
   const cardRef = useRef<ViewShot>(null);
+  const [dayNews, setDayNews] = useState<DayNews[]>([]);
+  const [newsLoading, setNewsLoading] = useState(true);
+
+  const fetchDayNews = useCallback(async () => {
+    try {
+      const response = await axios.get(`${BACKEND_URL}/api/day-news`);
+      setDayNews(response.data);
+    } catch (error) {
+      console.error('Error fetching day news:', error);
+    } finally {
+      setNewsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchDayNews();
+  }, [fetchDayNews]);
 
   const downloadCard = async () => {
     try {
