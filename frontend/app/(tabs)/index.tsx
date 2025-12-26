@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,8 @@ import {
   ScrollView,
   TouchableOpacity,
   Image,
+  Alert,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -13,9 +15,44 @@ import { router } from 'expo-router';
 import { useAuth } from '../../src/context/AuthContext';
 import { COLORS, SHADOWS } from '../../src/constants/theme';
 import QRCode from 'react-native-qrcode-svg';
+import ViewShot from 'react-native-view-shot';
+import * as Sharing from 'expo-sharing';
+import * as FileSystem from 'expo-file-system';
 
 export default function HomeScreen() {
   const { user } = useAuth();
+  const cardRef = useRef<ViewShot>(null);
+
+  const downloadCard = async () => {
+    try {
+      if (cardRef.current?.capture) {
+        const uri = await cardRef.current.capture();
+        
+        if (Platform.OS === 'web') {
+          // For web - download directly
+          const link = document.createElement('a');
+          link.href = uri;
+          link.download = `tessera-${user?.member_id || 'club'}.png`;
+          link.click();
+          Alert.alert('Successo', 'Tessera scaricata!');
+        } else {
+          // For mobile - share
+          const isAvailable = await Sharing.isAvailableAsync();
+          if (isAvailable) {
+            await Sharing.shareAsync(uri, {
+              mimeType: 'image/png',
+              dialogTitle: 'Salva la tua Tessera Club'
+            });
+          } else {
+            Alert.alert('Errore', 'Condivisione non disponibile su questo dispositivo');
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error capturing card:', error);
+      Alert.alert('Errore', 'Impossibile scaricare la tessera');
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -29,40 +66,69 @@ export default function HomeScreen() {
           <Text style={styles.welcomeText}>Benvenuto nel Club</Text>
         </View>
 
-        {/* Digital Member Card */}
+        {/* Gold Member Card */}
         <View style={styles.cardContainer}>
-          <View style={styles.memberCard}>
-            {/* Card Header */}
-            <View style={styles.cardHeader}>
-              <Image
-                source={require('../../assets/logo.png')}
-                style={styles.cardLogo}
-                resizeMode="contain"
-              />
-            </View>
-
-            {/* Card Body */}
-            <View style={styles.cardBody}>
-              <Text style={styles.memberName}>{user?.nome?.toUpperCase() || 'MEMBRO'}</Text>
-              <Text style={styles.memberLabel}>MEMBRO</Text>
-            </View>
-
-            {/* Card Footer */}
-            <View style={styles.cardFooter}>
-              <View>
-                <Text style={styles.memberId}>ID: {user?.member_id || '#000000'}</Text>
-                <Text style={styles.memberSince}>Membro dal 2025</Text>
-              </View>
-              <View style={styles.qrContainer}>
-                <QRCode
-                  value={user?.id || 'solucion-albania-club'}
-                  size={60}
-                  backgroundColor="white"
-                  color="black"
+          <ViewShot ref={cardRef} options={{ format: 'png', quality: 1 }}>
+            <View style={styles.goldCard}>
+              {/* Gold gradient overlay effect */}
+              <View style={styles.goldOverlay} />
+              
+              {/* Card Header */}
+              <View style={styles.cardHeader}>
+                <Image
+                  source={require('../../assets/logo.png')}
+                  style={styles.cardLogo}
+                  resizeMode="contain"
                 />
+                <View style={styles.cardBadge}>
+                  <Text style={styles.cardBadgeText}>GOLD</Text>
+                </View>
+              </View>
+
+              {/* Card Body */}
+              <View style={styles.cardBody}>
+                <Text style={styles.memberName}>{user?.nome?.toUpperCase() || 'MEMBRO'}</Text>
+                <View style={styles.memberTypeContainer}>
+                  <Ionicons name="star" size={14} color="#FFD700" />
+                  <Text style={styles.memberType}>MEMBRO ESCLUSIVO</Text>
+                  <Ionicons name="star" size={14} color="#FFD700" />
+                </View>
+              </View>
+
+              {/* Card Footer */}
+              <View style={styles.cardFooter}>
+                <View style={styles.cardInfo}>
+                  <Text style={styles.cardLabel}>ID MEMBRO</Text>
+                  <Text style={styles.cardValue}>{user?.member_id || '#000000'}</Text>
+                  <Text style={styles.cardLabel}>VALIDA DAL</Text>
+                  <Text style={styles.cardValue}>2025</Text>
+                </View>
+                <View style={styles.qrContainer}>
+                  <QRCode
+                    value={`solucion-club:${user?.id || 'member'}`}
+                    size={70}
+                    backgroundColor="white"
+                    color="black"
+                  />
+                </View>
+              </View>
+
+              {/* Card decorative elements */}
+              <View style={styles.cardChip}>
+                <View style={styles.chipLines}>
+                  <View style={styles.chipLine} />
+                  <View style={styles.chipLine} />
+                  <View style={styles.chipLine} />
+                </View>
               </View>
             </View>
-          </View>
+          </ViewShot>
+
+          {/* Download Button */}
+          <TouchableOpacity style={styles.downloadButton} onPress={downloadCard}>
+            <Ionicons name="download-outline" size={20} color={COLORS.accent} />
+            <Text style={styles.downloadText}>Scarica Tessera</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Quick Actions */}
@@ -108,7 +174,7 @@ export default function HomeScreen() {
           <View style={styles.infoContent}>
             <Text style={styles.infoTitle}>Come usare la tessera</Text>
             <Text style={styles.infoText}>
-              Mostra il QR Code ai nostri partner per ricevere sconti esclusivi. La tessera e valida in tutti i punti convenzionati.
+              Mostra il QR Code ai nostri partner per ricevere sconti esclusivi. Scarica la tessera per averla sempre disponibile!
             </Text>
           </View>
         </View>
@@ -142,57 +208,130 @@ const styles = StyleSheet.create({
   cardContainer: {
     marginBottom: 32,
   },
-  memberCard: {
+  goldCard: {
     borderRadius: 20,
-    padding: 20,
+    padding: 24,
+    minHeight: 220,
     backgroundColor: '#1a1a1a',
-    borderWidth: 2,
-    borderColor: COLORS.accent,
-    ...SHADOWS.card,
+    borderWidth: 3,
+    borderColor: '#FFD700',
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  goldOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(255, 215, 0, 0.05)',
   },
   cardHeader: {
-    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
     marginBottom: 16,
+    zIndex: 1,
   },
   cardLogo: {
-    width: 140,
-    height: 100,
+    width: 100,
+    height: 60,
+  },
+  cardBadge: {
+    backgroundColor: '#FFD700',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  cardBadgeText: {
+    color: '#000',
+    fontWeight: 'bold',
+    fontSize: 12,
+    letterSpacing: 1,
   },
   cardBody: {
     marginBottom: 20,
-    alignItems: 'center',
+    zIndex: 1,
   },
   memberName: {
     fontSize: 22,
     fontWeight: 'bold',
-    color: COLORS.textPrimary,
+    color: '#FFD700',
     letterSpacing: 2,
+    marginBottom: 4,
   },
-  memberLabel: {
-    fontSize: 12,
-    color: COLORS.accent,
+  memberTypeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  memberType: {
+    fontSize: 11,
+    color: '#FFD700',
     letterSpacing: 3,
-    marginTop: 4,
+    opacity: 0.8,
   },
   cardFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-end',
+    zIndex: 1,
   },
-  memberId: {
+  cardInfo: {
+    flex: 1,
+  },
+  cardLabel: {
+    fontSize: 9,
+    color: 'rgba(255, 215, 0, 0.6)',
+    letterSpacing: 1,
+    marginTop: 8,
+  },
+  cardValue: {
     fontSize: 14,
-    color: COLORS.textPrimary,
+    color: '#FFFFFF',
     fontWeight: '600',
-  },
-  memberSince: {
-    fontSize: 11,
-    color: 'rgba(255,255,255,0.5)',
-    marginTop: 2,
   },
   qrContainer: {
     backgroundColor: 'white',
     padding: 6,
     borderRadius: 8,
+  },
+  cardChip: {
+    position: 'absolute',
+    right: 80,
+    top: 80,
+    width: 45,
+    height: 35,
+    backgroundColor: '#D4AF37',
+    borderRadius: 6,
+    padding: 4,
+    justifyContent: 'center',
+  },
+  chipLines: {
+    flex: 1,
+    justifyContent: 'space-between',
+  },
+  chipLine: {
+    height: 3,
+    backgroundColor: '#B8860B',
+    borderRadius: 1,
+  },
+  downloadButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.surface,
+    borderRadius: 12,
+    padding: 14,
+    marginTop: 16,
+    borderWidth: 1,
+    borderColor: COLORS.accent,
+  },
+  downloadText: {
+    color: COLORS.accent,
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 8,
   },
   sectionTitle: {
     fontSize: 18,
