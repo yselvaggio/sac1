@@ -71,6 +71,12 @@ class PasswordResetResponse(BaseModel):
     email_sent: bool
     temp_password: Optional[str] = None
 
+class GoogleAuthRequest(BaseModel):
+    email: str
+    nome: str
+    google_id: str
+    foto_url: Optional[str] = None
+
 class Token(BaseModel):
     access_token: str
     token_type: str
