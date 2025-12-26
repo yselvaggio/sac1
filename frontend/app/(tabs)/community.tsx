@@ -38,6 +38,10 @@ export default function CommunityScreen() {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [newBody, setNewBody] = useState('');
+  const [newNome, setNewNome] = useState('');
+  const [newEmail, setNewEmail] = useState('');
+  const [newTelefono, setNewTelefono] = useState('');
+  const [newCitta, setNewCitta] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const fetchPosts = useCallback(async () => {
