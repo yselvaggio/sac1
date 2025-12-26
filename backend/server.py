@@ -123,6 +123,9 @@ class CommunityPost(BaseModel):
     autore_nome: str
     titolo: str
     corpo: str
+    email: Optional[str] = None
+    telefono: Optional[str] = None
+    citta: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 class CommunityPostCreate(BaseModel):
@@ -130,6 +133,9 @@ class CommunityPostCreate(BaseModel):
     autore_nome: str
     titolo: str
     corpo: str
+    email: str
+    telefono: str
+    citta: str
 
 # ============== HELPER FUNCTIONS ==============
 
