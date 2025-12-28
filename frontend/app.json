@@ -17,7 +17,8 @@
         "backgroundColor": "#1a1a1a"
       },
       "package": "com.solucionalbania.club",
-      "versionCode": 1
+      "versionCode": 1,
+      "jsEngine": "jsc"
     },
     "web": {
       "bundler": "metro",
